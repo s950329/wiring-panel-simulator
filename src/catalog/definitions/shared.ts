@@ -27,6 +27,19 @@ export function poleBankTerminals(
   return ids.map((id, i) => terminal(id, [-width / 2 + pitch * (i + .5), y, z], role));
 }
 
+export function terminalStripTerminals(
+  count: number,
+  pitch: number,
+): CatalogTerminalDefinition[] {
+  const terminals: CatalogTerminalDefinition[] = [];
+  for (let i = 0; i < count; i++) {
+    const x = (i - (count - 1) / 2) * pitch;
+    terminals.push(terminal(`${i + 1}A`, [x, 23, -13]));
+    terminals.push(terminal(`${i + 1}B`, [x, 23, 13]));
+  }
+  return terminals;
+}
+
 export const pushButtonTerminals = (): CatalogTerminalDefinition[] => [
   terminal('1', [-9, -41, -6], 'contact', '13 · 常開 NO', 'NO'),
   terminal('2', [9, -41, 6], 'contact', '14 · 常開 NO', 'NO'),

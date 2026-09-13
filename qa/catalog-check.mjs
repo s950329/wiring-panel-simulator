@@ -92,9 +92,30 @@ test('TH20 publishes verified terminal geometry without guessing auxiliary conta
   assert.equal(th.electrical,undefined);
 });
 
+
+test('every current product has catalog-authored terminal topology',()=>{
+  const expectedCounts={
+    'shihlin-t20':6,
+    'twin-fuse-holder':4,
+    'omron-p2cf11':11,
+    'terminal-strip-46':92,
+    'terminal-strip-13':26,
+  };
+  for(const [id,definition] of Object.entries(componentDefinitions)){
+    assert.ok(definition.terminals?.length>0,`${id} must publish terminal topology`);
+  }
+  for(const [id,count] of Object.entries(expectedCounts)){
+    assert.equal(componentDefinitions[id].terminals.length,count,`${id} terminal count`);
+  }
+  assert.deepEqual(componentDefinitions['omron-p2cf11'].terminals.slice(8).map(t=>t.exitDirection),[
+    [-1,0,0],[-1,0,0],[-1,0,0],
+  ]);
+});
+
 test('runtime terminals materialize catalog geometry for every migrated device',()=>{
-  for(const id of ['PB1','SA1','ES1','MC1','AP1','TH1','MC2','MC3','SO1']){
-    const component=createComponent(placement(id));
+  for(const source of [...placements,...frontPlacements]){
+    const component=createComponent(source);
+    assert.equal(component.terminals.length,component.definition.terminals.length);
     for(const terminal of component.terminalDefinitions){
       assert.equal(terminal.position.length,3);
       assert.equal(terminal.exitDirection.length,3);
