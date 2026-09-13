@@ -2,18 +2,73 @@ import type { Group, Object3D, Mesh, MeshPhysicalMaterial } from 'three';
 
 /** Board-proportion units, not measured millimetres. All vectors are component-local. */
 export type Vec3 = readonly [number, number, number];
-export type ViewType = 'breaker' | 'fuse' | 'contactorSP' | 'contactorSC' | 'contactorCN' |
-  'auxiliary' | 'overload' | 'socket' | 'terminalStrip' | 'buzzer' | 'emergency' | 'selector' | 'button' | 'lamp';
+
+/** Product semantics. A category describes what a component is, not how it is rendered. */
+export type ComponentCategory =
+  | 'breaker'
+  | 'fuse'
+  | 'contactor'
+  | 'auxiliaryContact'
+  | 'overload'
+  | 'relay'
+  | 'timer'
+  | 'socket'
+  | 'terminalBlock'
+  | 'buzzer'
+  | 'emergencyStop'
+  | 'selector'
+  | 'pushButton'
+  | 'lamp';
+
+/** Visual model IDs are registry keys rather than a closed product-type union. */
+export type VisualModelId = string;
+/** @deprecated Compatibility alias while legacy JS model builders are migrated. */
+export type ViewType = VisualModelId;
+
 export type BehaviorKind = 'button' | 'contactor' | 'breaker' | 'fuse' | 'auxiliary' | 'overload' |
   'socket' | 'terminalStrip' | 'buzzer' | 'emergency' | 'selector' | 'lamp';
 
+export interface VisualDefinition {
+  readonly model: VisualModelId;
+}
+export type TerminalRole = 'unverified' | 'coil' | 'power' | 'contact' | 'control' | 'neutral' | 'ground';
+export interface CatalogTerminalDefinition {
+  readonly id: string;
+  readonly displayName?: string;
+  readonly group?: string;
+  readonly position: Vec3;
+  /** Relative to the COMPONENT, not the screw's rotated frame. */
+  readonly exitDirection: Vec3;
+  /** Reserved for a future authored corridor. The current router does not consume this field. */
+  readonly escapePath?: readonly Vec3[];
+  readonly role: TerminalRole;
+}
+export interface ElectricalContact {
+  readonly type: 'NO' | 'NC';
+  readonly terminals: readonly [string, string];
+  readonly controlledBy?: string;
+}
+export interface CoilDefinition {
+  readonly terminals: readonly [string, string];
+}
+export interface ElectricalDefinition {
+  readonly coil?: CoilDefinition;
+  readonly contacts?: readonly ElectricalContact[];
+}
+
 export interface ComponentDefinition {
   readonly id: string;
-  readonly viewType: ViewType;
+  readonly category: ComponentCategory;
   readonly behavior: BehaviorKind;
   readonly name: string;
   readonly model: string;
+  readonly manufacturer?: string;
   readonly size: Vec3;
+  readonly visual: VisualDefinition;
+  /** Authored terminal topology. Legacy models may omit this during the staged migration. */
+  readonly terminals?: readonly CatalogTerminalDefinition[];
+  /** Internal electrical relationships. The simulator does not solve these yet. */
+  readonly electrical?: ElectricalDefinition;
   readonly hint: string;
   readonly photo?: string;
   readonly color?: number;
@@ -30,18 +85,15 @@ export interface ComponentPlacement {
   readonly rotation: number;
   readonly parentId?: string;
 }
-/** Compatibility projection for the existing geometry builders; never stored as a model definition. */
-export type ResolvedComponent = ComponentPlacement & Omit<ComponentDefinition, 'id'> & { readonly type: ViewType };
-export interface TerminalDefinition {
-  readonly id: string;
-  readonly displayName?: string;
-  readonly group?: string;
+/** Compatibility projection for existing geometry builders; type mirrors visual.model during migration. */
+export type ResolvedComponent = ComponentPlacement & Omit<ComponentDefinition, 'id'> & { readonly type: VisualModelId };
+
+/** Runtime terminal data materialized from catalog data or legacy builder coordinates. */
+export interface TerminalDefinition extends CatalogTerminalDefinition {
+  /** @deprecated Use position. Kept until all routing/tests are migrated. */
   readonly localPosition: Vec3;
-  /** Relative to the COMPONENT, not the screw's rotated frame. */
-  readonly exitDirection: Vec3;
-  /** Reserved for a future authored corridor. The current router does not consume this field. */
-  readonly escapePath?: readonly Vec3[];
-  readonly electricalRole: 'unverified' | 'coil' | 'power' | 'contact';
+  /** @deprecated Use role. Kept until all callers are migrated. */
+  readonly electricalRole: TerminalRole;
 }
 export interface TerminalView {
   id: string;
