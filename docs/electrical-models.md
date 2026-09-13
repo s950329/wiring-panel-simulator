@@ -1,6 +1,6 @@
 # 電性資料與教學配置
 
-核對日期：2026-09-13。交付範圍：Phase 0–2；核心尚未接入 3D 通電操作。
+核對日期：2026-09-13。交付範圍：Phase 0–3；WIRE-R6 接入送電操作，原因說明及最終瀏覽器 E2E 仍待 Phase 4。
 
 ## teaching-control-v1
 
@@ -125,3 +125,10 @@ simulator.step(circuit, {QF1: {on: true}, PB5: {pressed: true}}); // 停止
 `npm run test:electrical` 在 Node 執行純電性測試；`npm test` 另外包含現有模型端子集合與面板姿勢整合檢查，以及原有幾何／路由驗證。
 
 後續實物核對：MC1 八側翼端子逐點導通、AP1 實際端子排列、TH1 TC/TA/TB 真值表、TB 同格橋接及負載額定銘牌。在此之前，以上 teaching profile 不升級為實物已確認規格。
+## Phase 3 application integration
+
+WIRE-R6 exposes teaching CONTROL L/N, MAIN L1/L2/L3 and M1 U/V/W as endpoint cards. L/N are labels of this explicitly independent teaching control supply, not an assertion that a physical coil must use neutral. E-numbered user links are visible in the wire list; physical W-numbered wires retain routing and collision checks.
+
+For a supported SP16 parent and TH20 child, `application/equipment.ts` explicitly registers the displayed three assembly straps: 2T1 ↔ 1/L1, 4T2 ↔ 3/L2 and 6T3 ↔ 5/L3. This is an authored teaching assembly configuration, separately listed in the UI, not a mesh-derived connection or a change to the generic solver. The original Phase 2 fixture still declares its own wires explicitly.
+
+The application maps actual button pressed, emergency latched, breaker on, selector position and overload trip inputs into the core. Manual contactor pressed, lamp test and buzzer test never become electrical inputs. `ElectricalOutput` drives the display separately; halted outputs are null and visibly suppressed. Stopping clears transient demonstrations and coil memory, preserving emergency latch, overload trip and all wires. Browser E2E acceptance is tracked after Phase 4.

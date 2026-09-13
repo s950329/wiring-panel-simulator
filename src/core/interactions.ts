@@ -18,19 +18,20 @@ export function operate(component: ComponentRuntime, action: ComponentAction, co
 /** Tracks every active transient operation, including pointer capture lost when its DOM node is replaced. */
 export class MomentaryOperations {
   private active = new Set<ComponentRuntime>();
-  constructor(private readonly onSound: (on: boolean) => void) {}
+  constructor(private readonly onSound: (on: boolean) => void,
+    private readonly dispatch: (component: ComponentRuntime, action: ComponentAction) => ActionResult = (c, a) => c.dispatch(a)) {}
   begin(component: ComponentRuntime, action: ActionOf<'press' | 'buzzer'>): void {
     if (action.type !== 'press' && action.type !== 'buzzer') return;
     if (this.active.has(component)) return;
-    if (!component.dispatch(action).accepted || !component.pressed) return;
+    if (!this.dispatch(component, action).accepted || !component.pressed) return;
     this.active.add(component);
     this.syncSound();
   }
   end(component: ComponentRuntime): void {
-    component.release(); this.active.delete(component); this.syncSound();
+    this.dispatch(component, {type: 'release'}); this.active.delete(component); this.syncSound();
   }
   cancel(): void {
-    for (const component of this.active) component.release();
+    for (const component of this.active) this.dispatch(component, {type: 'release'});
     this.active.clear(); this.syncSound();
   }
   private syncSound(): void { this.onSound([...this.active].some(component => component.audible)); }

@@ -110,9 +110,9 @@ TypeScript 5.9 採 strict、allowJs、noEmit。新核心採 TS，舊的幾何、
 
 `src/electrical/` 新增純 TypeScript 資料契約、明示教學 catalog、netlist 與單輪 solver。端點仍為 `{component, terminal}`，但不依賴 Three.js 或核心的 view 型別。wire／固定橋接／閉合接點形成 net；負載保留兩個端點並接受明確來源 profile。`load-paths.ts` 使用雙連通區塊區分串聯負載與懸空支路。
 
-`EvaluationState.inputs` 為電性操作，`coils` 為外部提供的線圈 snapshot；求解結果不直接改寫機械 `pressed` 或燈泡測試狀態。完整資料依據、未確認端子、教學假設及 API 範例見 `docs/electrical-models.md`。新增模組尚未由 application／view 匯入，所以畫面與離線 HTML 仍是 WIRE-R5；此 source commit 不代表畫面已有送電模擬。
+`EvaluationState.inputs` 為電性操作，`coils` 為外部提供的線圈 snapshot；求解結果不直接改寫機械 `pressed` 或燈泡測試狀態。完整資料依據、未確認端子、教學假設及 API 範例見 `docs/electrical-models.md`。Phase 0–2 交付時尚未接入畫面；Phase 3 的接入方式見下節。
 
-`npm run test:electrical` 可在沒有 DOM 或 Three.js 匯入的電性測試程式中執行。完整 `npm test` 另比對所有既有元件的端子 ID 並驗證面板翻轉、演示操作不改變相同輸入的電性結果。Phase 2 的後續擴充見下節；Phase 3–4 的 UI／解釋尚待實作。
+`npm run test:electrical` 可在沒有 DOM 或 Three.js 匯入的電性測試程式中執行。完整 `npm test` 另比對所有既有元件的端子 ID 並驗證面板翻轉、演示操作不改變相同輸入的電性結果。
 
 ## 電性 Phase 2：穩態回授與三相主電路
 
@@ -120,6 +120,14 @@ TypeScript 5.9 採 strict、allowJs、noEmit。新核心採 TS，舊的幾何、
 
 `Circuit.threePhaseSources` 與 `ElectricalModel.motors` 是向後相容的可選資料。`power.ts` 統一辨識二端／三相來源，檢查相間短路與來源衝突，並輸出獨立 `Evaluation.motors`。馬達只有直接接到同來源三個不同相別時供電成立，不能從 MC 的狀態推導；缺相／重複相別與串聯、混源等不支援情況分開。馬達負載路徑只供不支援網路偵測，不加入 net 的理想導通邊。
 
-`exercises.ts` 的 `directOnLineCircuit()` 提供一般資料格式的教學配置，用於驗證啟停、保持、安全接點、電源事件與錯線。求解器沒有對它的 ID／線路做特判。`npm run test:electrical` 納入穩態、三相與完整事件序列測試。Phase 3–4 的 application adapter、送電 UI 與瀏覽器操作驗收仍未實作，畫面維持 WIRE-R5。
+`exercises.ts` 的 `directOnLineCircuit()` 提供一般資料格式的教學配置，用於驗證啟停、保持、安全接點、電源事件與錯線。求解器沒有對它的 ID／線路做特判。`npm run test:electrical` 納入穩態、三相與完整事件序列測試。
 
 馬達在診斷圖中以三條端子支線連至獨立 hub，並沿用 `load-paths.ts` 的來源對簡單路徑分析；這只是追蹤哪些端子參與回路，不代表星形繞組或電性橋接。未直接接到來源的端子必須位於實際來源回路上，才屬不支援的負載間供電；懸空支線不會因旁路馬達或無回流的另一電源而被誤判。
+
+## 電性 Phase 3：WIRE-R6 操作整合
+
+`application/simulation.ts` 讀取實際元件狀態及 WiringController 的端點，另保存 CONTROL、MAIN、M1 外接卡片的 E 編號連接；外接設備不冒充盤內幾何。`equipment.ts` 明示登錄 SP16／TH20 父子組裝的三條固定銅片接線，畫面可查閱，並不從 mesh 推導導通。
+
+ComponentInstance 的 `electricalOutput` 與機械 `state` 分開。模擬中 `pressed`／`audible` 及 lamp view 使用穩態輸出；AP view 讀父接觸器的有效吸合狀態。`present()` 移除手動 MC／燈／蜂鳴器演示，application 操作入口也拒絕它們。MomentaryOperations 透過同一操作入口釋放瞬時輸入。
+
+送電前清除演示狀態與舊線圈記憶；停止保留接線、急停與 TH 跳脫。實體／外接線的底層 mutation guard 與 UI 均鎖定 active／halted 模式，非同步走線完成前禁止送電；幾何 movePanel 不屬電路編輯。Phase 3 的 Node 測試包含真實元件、完整走線、面板移動、供電與編輯防護；瀏覽器 E2E 留待 Phase 4 完成後驗收。

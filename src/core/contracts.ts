@@ -98,7 +98,8 @@ export interface ComponentBehavior<S extends ComponentState, A extends Component
   message?(state: S, action: A, id: string): string | undefined;
   audible?(state: S): boolean;
 }
-export interface ViewContext { readonly parentPressed: boolean }
+export interface ElectricalOutput {readonly mode: 'off' | 'running' | 'halted'; readonly energized: boolean | null}
+export interface ViewContext { readonly parentPressed: boolean; readonly electrical?: ElectricalOutput }
 export interface ComponentView<S extends ComponentState> {
   readonly root: Group;
   readonly parts: ModelParts;
@@ -120,6 +121,8 @@ export interface ComponentRuntime {
   readonly audible: boolean;
   readonly position: number;
   readonly current: number;
+  readonly electricalOutput: ElectricalOutput;
+  setElectricalOutput(output: ElectricalOutput): void;
   dispatch(action: ComponentAction): ActionResult;
   release(): void;
   present(context?: StatusContext): Presentation;

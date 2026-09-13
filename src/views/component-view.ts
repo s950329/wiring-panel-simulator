@@ -10,6 +10,7 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
   private readonly originalPlungerY: number;
   private readonly color: number;
   private readonly lamp: boolean;
+  private readonly contactor: boolean;
 
   constructor(model: ModelContext) {
     this.root = model.root;
@@ -19,6 +20,7 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
     this.originalPlungerY = model.parts.plunger?.position.y ?? 0;
     this.color = model.def.color ?? 0;
     this.lamp = model.def.behavior === 'lamp';
+    this.contactor = model.def.behavior === 'contactor';
     const ids = new Set<string>();
     for (const t of this.terminals) {
       if (ids.has(t.id)) throw new Error(`${model.def.id}: 重複端子 ${t.id}`);
@@ -43,7 +45,8 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
   update(s: ComponentState, context: ViewContext, instant = false): void {
     const p = this.parts;
     const lerp = (from: number, to: number, speed: number) => instant ? to : MathUtils.lerp(from, to, speed);
-    const pressed = s.kind === 'momentary' && s.pressed;
+    const simulated = context.electrical && context.electrical.mode !== 'off';
+    const pressed = simulated && this.contactor ? context.electrical?.energized === true : s.kind === 'momentary' && s.pressed;
     const latched = s.kind === 'emergency' && s.latched;
     if (p.bridge) p.bridge.position.y = lerp(p.bridge.position.y, context.parentPressed ? -3 : 0, .3);
     if (p.plunger) p.plunger.position.y = lerp(p.plunger.position.y, this.originalPlungerY - (pressed ? 7 : 0), .32);
@@ -64,7 +67,7 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
     }
     if (p.color && this.lamp && s.kind === 'toggle') {
       p.color.emissive.setHex(this.color);
-      p.color.emissiveIntensity = s.on ? 1.7 : 0;
+      p.color.emissiveIntensity = (simulated ? context.electrical?.energized === true : s.on) ? 1.7 : 0;
     }
   }
   syncRoutingPose(state: ComponentState): void {
