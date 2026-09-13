@@ -1,6 +1,7 @@
 import type {Circuit, Component, Contact, ElectricalModel, InputDefinition, Link, Load} from './contracts.ts';
 
 export const TEACHING_PROFILE = 'teaching-control-v1';
+export const THREE_PHASE_PROFILE = 'teaching-three-phase-v1';
 const booleanInput = (initial: boolean): InputDefinition => ({initial, values: [false, true]});
 const link = (id: string, a: string, b: string): Link => ({id, a, b});
 const inputContact = (id: string, a: string, b: string, key: string, equals: boolean | 0 | 1 | 2): Contact =>
@@ -22,8 +23,9 @@ const strip = (count: number): Definition => ({
 const sides = ['L-B-U', 'L-B-L', 'L-F-U', 'L-F-L', 'R-B-U', 'R-B-L', 'R-F-U', 'R-F-L'];
 const definitions: Record<string, Definition> = {
   'teaching-source': {terminals: ['L', 'N'], model: model()},
-  // Reserved external equipment contract; three-phase evaluation is Phase 2.
-  'teaching-motor': {terminals: ['U', 'V', 'W']},
+  'teaching-three-phase-source': {terminals: ['L1', 'L2', 'L3'], model: model()},
+  'teaching-motor': {terminals: ['U', 'V', 'W'], model: model({
+    motors: [{id: 'motor', terminals: ['U', 'V', 'W'], profile: THREE_PHASE_PROFILE}]})},
   'shihlin-sp16': {terminals: ['1L1', '3L2', '5L3', '2T1', '4T2', '6T3', ...sides, 'A1', 'A2'],
     model: model({unsupportedTerminals: sides, loads: [load('coil', 'A1', 'A2', 'coil')],
       contacts: [coilContact('main-1', '1L1', '2T1'), coilContact('main-2', '3L2', '4T2'), coilContact('main-3', '5L3', '6T3')]})},

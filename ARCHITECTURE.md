@@ -112,4 +112,14 @@ TypeScript 5.9 採 strict、allowJs、noEmit。新核心採 TS，舊的幾何、
 
 `EvaluationState.inputs` 為電性操作，`coils` 為外部提供的線圈 snapshot；求解結果不直接改寫機械 `pressed` 或燈泡測試狀態。完整資料依據、未確認端子、教學假設及 API 範例見 `docs/electrical-models.md`。新增模組尚未由 application／view 匯入，所以畫面與離線 HTML 仍是 WIRE-R5；此 source commit 不代表畫面已有送電模擬。
 
-`npm run test:electrical` 可在沒有 DOM 或 Three.js 匯入的電性測試程式中執行。完整 `npm test` 另比對所有既有元件的端子 ID 並驗證面板翻轉、演示操作不改變相同輸入的電性結果。Phase 2 的穩態回授、三相馬達及 Phase 3–4 的 UI／解釋尚待實作。
+`npm run test:electrical` 可在沒有 DOM 或 Three.js 匯入的電性測試程式中執行。完整 `npm test` 另比對所有既有元件的端子 ID 並驗證面板翻轉、演示操作不改變相同輸入的電性結果。Phase 2 的後續擴充見下節；Phase 3–4 的 UI／解釋尚待實作。
+
+## 電性 Phase 2：穩態回授與三相主電路
+
+`simulator.ts` 的 `settleCircuit()` 以相同輸入、上一個線圈向量反覆呼叫单輪 evaluator，同時更新線圈；只有接點／線圈一致的穩態可對外發布。`ElectricalSimulator` 保存穩態並在錯誤、震盪或超限時清除記憶、鎖定 halted，直到 reset；不修改使用者操作或接線。
+
+`Circuit.threePhaseSources` 與 `ElectricalModel.motors` 是向後相容的可選資料。`power.ts` 統一辨識二端／三相來源，檢查相間短路與來源衝突，並輸出獨立 `Evaluation.motors`。馬達只有直接接到同來源三個不同相別時供電成立，不能從 MC 的狀態推導；缺相／重複相別與串聯、混源等不支援情況分開。馬達負載路徑只供不支援網路偵測，不加入 net 的理想導通邊。
+
+`exercises.ts` 的 `directOnLineCircuit()` 提供一般資料格式的教學配置，用於驗證啟停、保持、安全接點、電源事件與錯線。求解器沒有對它的 ID／線路做特判。`npm run test:electrical` 納入穩態、三相與完整事件序列測試。Phase 3–4 的 application adapter、送電 UI 與瀏覽器操作驗收仍未實作，畫面維持 WIRE-R5。
+
+馬達在診斷圖中以三條端子支線連至獨立 hub，並沿用 `load-paths.ts` 的來源對簡單路徑分析；這只是追蹤哪些端子參與回路，不代表星形繞組或電性橋接。未直接接到來源的端子必須位於實際來源回路上，才屬不支援的負載間供電；懸空支線不會因旁路馬達或無回流的另一電源而被誤判。

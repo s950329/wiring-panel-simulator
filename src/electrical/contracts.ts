@@ -9,6 +9,11 @@ export type Condition =
 export interface Link { readonly id: string; readonly a: string; readonly b: string }
 export interface Contact extends Link { readonly when: Condition }
 export interface Load extends Link { readonly kind: 'coil' | 'lamp' | 'buzzer'; readonly profile: string }
+export interface Motor {
+  readonly id: string;
+  readonly terminals: readonly [string, string, string];
+  readonly profile: string;
+}
 export interface Provenance {
   readonly level: 'manufacturer' | 'user-confirmed' | 'teaching-assumption';
   readonly reference: string;
@@ -18,6 +23,7 @@ export interface ElectricalModel {
   readonly fixed: readonly Link[];
   readonly contacts: readonly Contact[];
   readonly loads: readonly Load[];
+  readonly motors?: readonly Motor[];
   readonly inputs: Readonly<Record<string, InputDefinition>>;
   /** These terminals exist in the model, but their internal connections are unknown. */
   readonly unsupportedTerminals?: readonly string[];
@@ -36,10 +42,18 @@ export interface Source {
   readonly profile: string;
   readonly enabled: boolean;
 }
+/** Three named phase poles of ONE source; no neutral or implicit two-pole supply. */
+export interface ThreePhaseSource {
+  readonly id: string;
+  readonly phases: readonly [Endpoint, Endpoint, Endpoint];
+  readonly profile: string;
+  readonly enabled: boolean;
+}
 export interface Circuit {
   readonly components: readonly Component[];
   readonly wires: readonly Wire[];
   readonly sources: readonly Source[];
+  readonly threePhaseSources?: readonly ThreePhaseSource[];
 }
 export interface EvaluationState {
   readonly inputs?: Readonly<Record<string, Readonly<Record<string, InputValue>>>>;
@@ -48,7 +62,8 @@ export interface EvaluationState {
 }
 export type DiagnosticCode = 'INVALID_ENDPOINT' | 'INVALID_DEFINITION' | 'INVALID_INPUT' |
   'DUPLICATE_ID' | 'MISSING_MODEL' | 'SOURCE_SHORT' | 'SOURCE_CONFLICT' |
-  'UNSUPPORTED_SERIES' | 'UNSUPPORTED_SOURCE_NETWORK' | 'INCOMPATIBLE_SUPPLY' | 'RATING_UNVERIFIED';
+  'UNSUPPORTED_SERIES' | 'UNSUPPORTED_SOURCE_NETWORK' | 'INCOMPATIBLE_SUPPLY' | 'RATING_UNVERIFIED' |
+  'OSCILLATION' | 'ITERATION_LIMIT' | 'MOTOR_MISSING_PHASE' | 'MOTOR_DUPLICATE_PHASE' | 'MOTOR_MIXED_SOURCES';
 export interface Diagnostic {
   readonly code: DiagnosticCode;
   readonly severity: 'error' | 'warning';
@@ -82,4 +97,16 @@ export interface LoadResult {
 export interface Evaluation extends Netlist {
   readonly status: 'ok' | 'unknown' | 'fault';
   readonly loads: readonly LoadResult[];
+  readonly motors: readonly MotorResult[];
+}
+export interface MotorResult {
+  readonly component: string;
+  readonly id: string;
+  readonly state: 'powered' | 'unpowered' | 'unknown' | 'fault';
+  readonly reason: 'supply' | 'source-off' | 'open' | 'missing-phase' | 'duplicate-phase' |
+    'mixed-sources' | 'incompatible-supply' | 'unsupported-series' | 'invalid-circuit' | 'source-fault';
+  readonly nets: readonly [string, string, string];
+  /** Source phase indices at U/V/W, not a claim about mechanical rotation. */
+  readonly phaseOrder: readonly [number | null, number | null, number | null];
+  readonly sourceIds: readonly string[];
 }

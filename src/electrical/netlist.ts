@@ -60,6 +60,12 @@ export function buildNetlist(circuit: Circuit, state: EvaluationState = {}): Net
     register(sourceIds, s.id, s.id); participating(s.a, s.id); participating(s.b, s.id);
     if (!s.profile || typeof s.enabled !== 'boolean') error('INVALID_DEFINITION', s.id);
   }
+  for (const s of circuit.threePhaseSources ?? []) {
+    register(sourceIds, s.id, s.id);
+    for (const e of s.phases) participating(e, s.id);
+    if (!s.profile || typeof s.enabled !== 'boolean' || s.phases.length !== 3 ||
+      new Set(s.phases.map(endpointKey)).size !== 3) error('INVALID_DEFINITION', s.id);
+  }
   for (const [id, inputs] of Object.entries(state.inputs ?? {})) {
     const c = components.get(id);
     for (const [key, value] of Object.entries(inputs)) {
@@ -86,6 +92,14 @@ export function buildNetlist(circuit: Circuit, state: EvaluationState = {}): Net
         if (unsupported.has(terminal)) error('INVALID_DEFINITION', `${c.id}/${item.id}`);
       }
       if ('profile' in item && !item.profile) error('INVALID_DEFINITION', `${c.id}/${item.id}`);
+    }
+    for (const motor of m.motors ?? []) {
+      register(ids, motor.id, `${c.id}/${motor.id}`);
+      if (!motor.profile || motor.terminals.length !== 3 || new Set(motor.terminals).size !== 3) error('INVALID_DEFINITION', `${c.id}/${motor.id}`);
+      for (const terminal of motor.terminals) {
+        valid({component: c.id, terminal}, `${c.id}/${motor.id}`);
+        if (unsupported.has(terminal)) error('INVALID_DEFINITION', `${c.id}/${motor.id}`);
+      }
     }
     for (const item of m.fixed) addEdge(JSON.stringify(['fixed', c.id, item.id]), 'fixed',
       {component: c.id, terminal: item.a}, {component: c.id, terminal: item.b});

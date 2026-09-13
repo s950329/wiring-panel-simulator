@@ -1,6 +1,6 @@
 # 電性資料與教學配置
 
-核對日期：2026-09-13。交付範圍：Phase 0–1；核心尚未接入 3D 通電操作。
+核對日期：2026-09-13。交付範圍：Phase 0–2；核心尚未接入 3D 通電操作。
 
 ## teaching-control-v1
 
@@ -40,9 +40,9 @@ MC1、AP1、TH1 的機械附掛不產生跨元件電線或原廠固定橋接。�
 | start | PB1.2 | MC1.A1 |
 | return | MC1.A2 | SUPPLY.N |
 
-按鈕放開時線圈開路；輸入 `{inputs: {PB1: {pressed: true}}}` 時線圈得到邏輯供電。這不是自保持練習；單輪結果不自動寫回接點。Phase 2 將以明確的上一輪 coil snapshot 進行同步迭代。
+按鈕放開時線圈開路；輸入 `{inputs: {PB1: {pressed: true}}}` 時線圈得到邏輯供電。這不是自保持練習；`evaluateCircuit()` 的單輪結果不自動寫回接點。Phase 2 的 `settleCircuit()`／`ElectricalSimulator` 以明確的上一輪 coil snapshot 進行同步迭代。
 
-`teaching-motor` 保留外部 `U/V/W` 端子契約，Phase 1 尚無三相負載模型；若接入即診斷缺漏，不能回報運轉。電源與馬達卡片尚未出現在 3D 畫面。
+Phase 2 已支援 `teaching-motor` 的外部 `U/V/W` 端子及 `teaching-three-phase-source` 的 `L1/L2/L3`，使用 `teaching-three-phase-v1` profile。三相是同一來源的三個不同相別，不是三個各自衝突的二端來源。電源與馬達卡片尚未出現在 3D 畫面。
 
 ```ts
 import {minimalControlCircuit} from '../src/electrical/catalog.ts';
@@ -63,6 +63,62 @@ const evaluation = evaluateCircuit(circuit, {inputs: {PB1: {pressed: true}}});
 - 負載必須直接跨同一來源的兩個 net，且 profile 相符。串聯負載電壓分配不求解，回報 `UNSUPPORTED_SERIES`。用圖的雙連通區塊找出來源兩端之間的負載路徑，懸空支路維持 open，不誤判成串聯。
 - 未知端點、重複 ID、錯誤定義／輸入、接入的缺漏模型令本輪 unknown，負載不回報成功。未接線的未知模型可留在盤面。預設先做全電路有效性檢查，尚無局部故障隔離。
 - 沒有類比數值、時間、熱、電流、保護協調、任意多來源合成或實物額定安全驗證。
+
+## Phase 2：穩態與事件邊界
+
+`settleCircuit(circuit, inputs, previousCoils?, {maxIterations?})` 是無副作用的純函式；預設最多 32 輪，設定值必須是正的安全整數。所有線圈在同一輪求解後一起更新。狀態不變才回傳 `status: 'stable'`，其中 evaluation 的接點與 coils 必須一致。重複狀態向量回報 `OSCILLATION`，達上限回報 `ITERATION_LIMIT`；其他 fault／unknown 同樣回傳 `status: 'halted'`，`evaluation` 與 `coils` 為 null，不發布最後一輪當作答案。
+
+`ElectricalSimulator.step(circuit, inputs)` 保留上一個已確認的穩態。每次傳入**完整操作快照**，不是增量事件；省略欄位使用 catalog 的預設值。回傳物件與 session 內部記憶隔離，呼叫端不能透過改結果覆蓋保持狀態。
+
+遇到 halted 會清除線圈記憶並鎖定停止結果，直到 `reset()`。reset 是模擬停止／重新開始邊界，不會改使用者的急停、過載狀態或接線；下一次 step 仍須帶入它們。控制斷电必須作為一次 step 傳入，不能省略該事件後期待求解器知道曾經斷電。
+
+```ts
+import {directOnLineCircuit} from '../src/electrical/exercises.ts';
+import {ElectricalSimulator} from '../src/electrical/simulator.ts';
+
+const circuit = directOnLineCircuit();
+const simulator = new ElectricalSimulator();
+simulator.step(circuit, {QF1: {on: true}}); // 等待啟動
+simulator.step(circuit, {QF1: {on: true}, PB3: {pressed: true}}); // 吸合
+const held = simulator.step(circuit, {QF1: {on: true}}); // 放開 PB3，AP1 保持
+// held.coils.MC1 === true；held.evaluation.motors[0].state === 'powered'
+simulator.step(circuit, {QF1: {on: true}, PB5: {pressed: true}}); // 停止
+```
+
+馬達的 `powered` 只表示 U/V/W 分別直接接到同一相符來源的三個不同相別。輸出 `phaseOrder` 是來源相別索引，不推算實際旋轉方向、速度或轉矩；仍回報 `RATING_UNVERIFIED`。兩相互換保留供電成立並記錄相序變更。
+
+| 主電路情境 | 馬達結果 | 模擬處理 |
+|---|---|---|
+| 三相完整、同來源且 profile 相符 | powered / supply | 可形成穩態 |
+| 全未接或主電源關閉 | unpowered / open 或 source-off | 控制電路獨立計算 |
+| 只接到一／兩個相別 | unpowered / missing-phase | `MOTOR_MISSING_PHASE` 警告，不冒稱運轉 |
+| 兩個馬達端子接到同一相別 | unpowered / duplicate-phase | `MOTOR_DUPLICATE_PHASE` 警告 |
+| 不同來源混接、供電種類／profile 不符 | unknown | 停止並要求修正／重設 |
+| 須跨越其他負載才能取得相別 | unknown / unsupported-series | 不把燈、線圈或其他馬達視為理想導線 |
+| 不同相直接短接或不同來源共用導通 rail | fault | 整個模擬停止，沒有自動 QF／FU 跳脫模型 |
+
+### 直接啟動教學配置
+
+`directOnLineCircuit()` 是 12 個教學元件、23 條電線的普通 Circuit 資料，求解器不辨識它的名稱、ID 或標準接線。控制與主電源在本配置中是**兩個獨立教學來源**，沒有暗含變壓器或實物配電關係。QF1 僅切換主電源；FU1 的 F1 支路在控制回路，F2 留作未使用的完整支路。
+
+| 線路／ID | 起點 | 終點 |
+|---|---|---|
+| control-feed | CONTROL.L | FU1.F1-IN |
+| fused-feed | FU1.F1-OUT | ES1.1 |
+| emergency-stop | ES1.2 | PB5.3（NC） |
+| stop-overload | PB5.4（NC） | TH1.TC |
+| overload-start | TH1.TB（教學 NC） | PB3.1（NO） |
+| start-coil | PB3.2（NO） | MC1.A1 |
+| coil-return | MC1.A2 | CONTROL.N |
+| hold-in / hold-out | PB3.1 → AP1.53 | AP1.54 → PB3.2 |
+| lamp-in / lamp-out | MC1.A1 → HL4.1 | MC1.A2 → HL4.2 |
+| 主極 1 | MAIN.L1 → QF1.L1 → QF1.T1 → MC1.1L1 | MC1.2T1 → TH1.1/L1 → TH1.2/T1 → M1.U |
+| 主極 2 | MAIN.L2 → QF1.L2 → QF1.T2 → MC1.3L2 | MC1.4T2 → TH1.3/L2 → TH1.4/T2 → M1.V |
+| 主極 3 | MAIN.L3 → QF1.L3 → QF1.T3 → MC1.5L3 | MC1.6T3 → TH1.5/L3 → TH1.6/T3 → M1.W |
+
+主極各有四條外部線（`main-n`、`breaker-n`、`contactor-n`、`motor-U/V/W`）；QF、MC、TH 內部關係由各 model 定義，不是額外跳線。TH 的 main paths 不會因 TEST 直接斷開；TEST 只交換其教學控制接點。因此繞過 TH 常閉接點會令保護停止失效，求解器不以全域命令掩蓋此錯接。
+
+一般保持接法在**控制電源**中斷後釋放，恢復且未按啟動時不重啟。但若只有主電源中斷而控制電路仍保持，恢復主電源後會重新供電；若啟動一直被按住，恢復控制電源也可能再次吸合。這是此教學接線的結果，不是實物操作安全保證。
 
 ## 驗證與後續核對
 
