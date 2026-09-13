@@ -48,3 +48,7 @@ Files: `src/electrical/explanation.ts`, simulation panel, main/scene/wiring high
 - [ ] Inspect desktop/mobile layout and browser errors; use read-only visible state as evidence. Do not substitute Node results for WebGL acceptance. If infrastructure prevents any required case, record the exact outstanding case truthfully.
 - [ ] Fix source defects, rerun affected E2E and complete regression/build gates. Verify matching website/offline source revision.
 - [ ] Push focused commits to canonical GitHub, verify source tree, push identical source to the existing Site, package validated build, deploy and confirm terminal success. Report only the actual verified scope.
+
+## Final acceptance status · 2026-09-13
+
+Phase 3 and Phase 4 are implemented, reviewed and committed. All 82 Node tests and strict TypeScript, production/offline build gates pass. The actual managed browser fails WebGL initialization (GL_RENDERER/GL_VENDOR Disabled), including one UI reload retry. Required browser cases remain unchecked; see `docs/electrical-acceptance.md`. Do not label final E2E passed.
