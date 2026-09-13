@@ -9,6 +9,7 @@ const {WiringController}=await import('../src/wiring/controller.js');
 const {describeTerminal}=await import('../src/wiring/terminals.ts');
 const {collectSolids}=await import('../src/wiring/solids.js');
 const {CollisionWorld}=await import('../src/wiring/collision.js');
+const {validateSelf}=await import('../src/wiring/router.js');
 const {HemisphereCamera}=await import('../src/camera.js');
 const front=new Set(frontControls.map(c=>c.id));
 const make=()=>{const model=buildModel(new T.Scene());return {...model,routing:new WiringController(model.world,model.components)};};
@@ -17,6 +18,7 @@ const move=(model,open)=>{const previous=model.flap.rotation.x;model.routing.mov
 function assertClear(model){
  const solids=collectSolids(model.world);
  for(const wire of model.routing.wires){
+  assert.ok(validateSelf(wire.points),`${wire.id} must not intersect itself`);
   assert.ok(new CollisionWorld(solids,model.routing.wires.filter(w=>w.id!==wire.id)).validate(wire.points),`${wire.id} must clear all solids and other wires`);
   for(const [endpoint,point] of [[wire.from,wire.points[0]],[wire.to,wire.points.at(-1)]]){
    const anchors=describeTerminal(model.world,model.components,endpoint).anchors;
@@ -49,12 +51,13 @@ test('ON pushes forward from the nameplate view and all camera resets share that
  const initial=orbit.azimuth;orbit.orbit(380,110);orbit.preset('perspective');assert.equal(orbit.azimuth,initial);assert.equal(orbit.elevation,1.03);
  orbit.preset('side');assert.equal(orbit.azimuth,initial);assert.equal(orbit.elevation,0);
 });
-test('all 24 flap terminals survive repeated closing/opening without detached endpoints or intersecting wires',()=>{
+test('all 36 flap terminals survive repeated closing/opening without detached endpoints or intersecting wires',()=>{
  const model=make();pose(model,true)();
  // Preserve a fixed line alongside all front controls, including same-panel wiring.
  const fixed=model.routing.connect({component:'MC1',terminal:'A1'},{component:'TB2',terminal:'1A'});
  let index=1;
  for(const id of front)for(const terminal of model.components.get(id).terminals){model.routing.connect({component:id,terminal:terminal.id},{component:'TB1',terminal:`${index++}A`});}
+ assert.equal(index-1,36);assert.equal(model.routing.wires.length,37);assertClear(model);
  const topology=model.routing.wires.map(w=>({id:w.id,from:w.from,to:w.to})),fixedPoints=structuredClone(fixed.points),selected=model.routing.selected;
  for(const open of [false,true,false,true]){
   move(model,open);assert.equal(model.flap.rotation.x,open?Math.PI:0);assertClear(model);

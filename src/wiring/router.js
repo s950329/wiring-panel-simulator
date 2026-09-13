@@ -25,7 +25,12 @@ function escape(info,collision,height){
  // edge before rising. This keeps wires off the button faces and out of the lid.
  const panel=info.c.root.parent;
  if(panel?.userData.operationPanel&&Math.abs(panel.rotation.x)<1e-6){
-  for(const p of ordered){const rear=[p[0],p[1],panel.position.z-85],top=[p[0],height,rear[2]];const path=[p,rear,top];if(collision.validate(path))return compact(path);}
+  // Four-contact blocks can put another clamp directly behind this one.
+  // Try a lateral lead beneath the plate before heading toward its rear edge.
+  for(const offset of [0,-4,4,-8,8,-12,12,-16,16,-24,24,-32,32,-40,40])for(const p of ordered){
+   const side=[p[0]+offset,p[1],p[2]],rear=[side[0],p[1],panel.position.z-85],top=[side[0],height,rear[2]];
+   const path=[p,side,rear,top];if(collision.validate(path))return compact(path);
+  }
  }
  for(const p of ordered){const q=[p[0],height,p[2]];if(collision.clear(p,q))return [p,q];}
  // Inner tiers must move through the actual recess before they can rise.
@@ -65,7 +70,9 @@ export function routeWire(world,components,from,to,wires=[]){
  // Stable lanes: keep all existing routes fixed; use free lateral / height slots.
  for(let attempt=0;attempt<9;attempt++){
   const tier=wires.length+attempt,ductHeight=attempt<2?16+4*(tier%6)+Math.floor(tier/42)*28:48+4*tier,lane=[0,-4,4,-8,8,-12,12][tier%7];
-  const heightA=Math.max(52,ductHeight+8,a.position[1]+16)+4*(tier%7)+8*attempt,heightB=Math.max(52,ductHeight+8,b.position[1]+16)+4*(tier%7)+8*attempt;
+  // On fallback routes, stagger the two approaches so nearby endpoints do
+  // not produce overlapping parallel legs at the same elevation.
+  const heightA=Math.max(52,ductHeight+8,a.position[1]+16)+4*(tier%7)+8*attempt+(attempt>=2?8:0),heightB=Math.max(52,ductHeight+8,b.position[1]+16)+4*(tier%7)+8*attempt;
   const ea=escape(a,collision,heightA),eb=escape(b,collision,heightB);if(!ea||!eb){if(attempt===0)throw new Error(`${!ea?key(from):key(to)} 的端子出口沒有足夠淨空，請先展開操作板或檢查遮擋`);continue;}
   const ga=ductPoint(ducts[da],ea.at(-1),lane,ductHeight),gb=ductPoint(ducts[db],eb.at(-1),lane,ductHeight);
   if(da===db&&distance(ga,gb)<8){const axis=ducts[db].rotation===90?0:2;gb[axis]+=gb[axis]>ductPoint(ducts[db],[400,0,320])[axis]?-8:8;const cross=axis===0?2:0;gb[cross]+=lane>0?-8:8;}
