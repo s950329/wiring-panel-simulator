@@ -1,0 +1,90 @@
+{
+  "sc21l-nameplate.png": {
+    "source": "IMG_2687 (1).jpg",
+    "sourceQuad": [
+      [
+        1100,
+        540
+      ],
+      [
+        1336,
+        540
+      ],
+      [
+        1370,
+        674
+      ],
+      [
+        1116,
+        674
+      ]
+    ],
+    "note": "Perspective rectification; actuator cut out with alpha."
+  },
+  "ap22-top-label.png": {
+    "source": "IMG_2687 (1).jpg",
+    "sourceQuad": [
+      [
+        290,
+        474
+      ],
+      [
+        534,
+        473
+      ],
+      [
+        504,
+        544
+      ],
+      [
+        235,
+        544
+      ]
+    ],
+    "note": "Flat label surface only."
+  },
+  "power-supply-label.png": {
+    "source": "IMG_2688 (1).jpg",
+    "sourceQuad": [
+      [
+        424,
+        548
+      ],
+      [
+        730,
+        537
+      ],
+      [
+        723,
+        599
+      ],
+      [
+        401,
+        609
+      ]
+    ],
+    "note": "Original printed Chinese text retained."
+  },
+  "cn18-frame-markings.png": {
+    "source": "IMG_2687 (1).jpg",
+    "sourceQuad": [
+      [
+        1490,
+        539
+      ],
+      [
+        1684,
+        538
+      ],
+      [
+        1816,
+        788
+      ],
+      [
+        1554,
+        791
+      ]
+    ],
+    "note": "Top, model and lower text strips retained; 3D holes and actuator masked."
+  }
+}

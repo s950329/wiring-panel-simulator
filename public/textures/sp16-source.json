@@ -1,0 +1,28 @@
+{
+  "source": "/workspace/scratch/89a08738cc2b/upload/IMG_2686 (1).jpg",
+  "corners_tl_tr_br_bl": [
+    [
+      752,
+      251.5
+    ],
+    [
+      876.5,
+      247.5
+    ],
+    [
+      884.5,
+      306.5
+    ],
+    [
+      766,
+      310.5
+    ]
+  ],
+  "output": "/workspace/scratch/89a08738cc2b/sp16-nameplate-rectified.png",
+  "output_size": [
+    1024,
+    512
+  ],
+  "processing": "Perspective rectification from original photo only; bicubic resampling; no generated text, recoloring, or sharpening.",
+  "notes": "Preferred near-side-on photograph. Native label region is approximately 125 by 60 source pixels. 1024x512 is a resampled texture canvas, not recovered detail. Small technical text remains unreadable."
+}

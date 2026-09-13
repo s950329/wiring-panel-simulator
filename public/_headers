@@ -1,0 +1,8 @@
+/
+  Cache-Control: no-cache, max-age=0, must-revalidate
+/index.html
+  Cache-Control: no-cache, max-age=0, must-revalidate
+/mc1.html
+  Cache-Control: no-cache, max-age=0, must-revalidate
+/wiring-panel.html
+  Cache-Control: no-cache, max-age=0, must-revalidate

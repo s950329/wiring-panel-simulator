@@ -1,0 +1,22 @@
+{
+  "name": "wiring-panel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run offline && vite build",
+    "test": "npm run typecheck && node --import tsx --test qa/geometry-check.mjs qa/mc1-correction.mjs qa/wiring-check.mjs qa/component-check.mjs qa/operation-panel-check.mjs",
+    "offline": "npm run typecheck && node scripts/build-offline.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.180.0",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vite": "6.1.0"
+  }
+}

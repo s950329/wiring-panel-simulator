@@ -8,3 +8,4 @@
 - Keep credentials, `node_modules/`, `dist/`, and preview runtime files out of Git. Do not store access tokens in remote URLs or configuration.
 - The accepted geometry and terminal coordinates are protected by `qa/fixtures/model-baseline.json`. Do not replace that fixture merely to hide a regression. Report any intentionally changed geometry and its validation.
 - Keep the TypeScript core strict. Do not conceal migration errors with `any`, `@ts-ignore`, or disabled checks. The existing JS model and routing modules are intentionally documented incremental migration boundaries.
+
