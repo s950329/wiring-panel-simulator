@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run offline && vite build",
-    "test": "npm run typecheck && node --import tsx --test qa/geometry-check.mjs qa/mc1-correction.mjs qa/wiring-check.mjs qa/component-check.mjs qa/operation-panel-check.mjs qa/front-controls-check.mjs",
+    "test": "npm run typecheck && node --import tsx --test qa/geometry-check.mjs qa/mc1-correction.mjs qa/wiring-check.mjs qa/component-check.mjs qa/catalog-check.mjs qa/operation-panel-check.mjs",
     "offline": "npm run typecheck && node scripts/build-offline.mjs",
     "typecheck": "tsc --noEmit"
   },

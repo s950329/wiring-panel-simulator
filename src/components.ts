@@ -1,49 +1,22 @@
 import {Group} from 'three';
-import type {ComponentAction, ComponentBehavior, ComponentPlacement, ComponentRuntime, ComponentState, ModelBuilder, ModelContext, ResolvedComponent, TerminalView, ViewType} from './core/contracts.ts';
+import type {ComponentAction, ComponentBehavior, ComponentPlacement, ComponentRuntime, ComponentState, ModelBuilder, ResolvedComponent} from './core/contracts.ts';
 import {ComponentInstance} from './core/component.ts';
 import {EmergencyBehavior, FuseBehavior, MomentaryBehavior, OverloadBehavior, PassiveBehavior, SelectorBehavior, ToggleBehavior} from './core/behaviors.ts';
 import {ThreeComponentView} from './views/component-view.ts';
 import {modelBuilders} from './views/models.js';
-import {terminal} from './primitives.js';
+import {applyCatalogTerminals} from './views/catalog-terminals.ts';
 import {getDefinition, resolvePlacement} from './catalog/resolve.ts';
 
-export const componentRegistry: Readonly<Record<ViewType, ModelBuilder>> = Object.freeze(modelBuilders);
+/** Visual model registry. Product/category growth no longer requires changing a closed ViewType union. */
+export const componentRegistry: Readonly<Record<string, ModelBuilder>> = Object.freeze(modelBuilders);
 
-function decorateFrontTerminal(t: TerminalView, displayName: string, group: string): void {
-  t.displayName = displayName;
-  t.group = group;
-  t.definition = {...t.definition, electricalRole: 'contact'};
-}
-function addFrontTerminal(model: ModelContext, id: string, displayName: string, group: string, x: number, z: number): void {
-  const object = terminal(model.root, model.terminals, id, x, -41, z, {scale: .7});
-  object.rotation.x = Math.PI;
-  object.userData.baselineExtension = true;
-  decorateFrontTerminal(model.terminals.at(-1)!, displayName, group);
-}
-function configureFrontTerminals(model: ModelContext, def: ResolvedComponent): void {
-  const [a, b] = model.terminals;
-  if (!a || !b) return;
-  if (def.type === 'button') {
-    decorateFrontTerminal(a, '13 · 常開 NO', 'NO');
-    decorateFrontTerminal(b, '14 · 常開 NO', 'NO');
-    addFrontTerminal(model, '3', '21 · 常閉 NC', 'NC', -9, 6);
-    addFrontTerminal(model, '4', '22 · 常閉 NC', 'NC', 9, -6);
-  } else if (def.type === 'selector') {
-    decorateFrontTerminal(a, '13 · 接點 A', 'selector-A');
-    decorateFrontTerminal(b, '14 · 接點 A', 'selector-A');
-    addFrontTerminal(model, '3', '23 · 接點 B', 'selector-B', -9, 6);
-    addFrontTerminal(model, '4', '24 · 接點 B', 'selector-B', 9, -6);
-  } else if (def.type === 'emergency') {
-    decorateFrontTerminal(a, '21 · 常閉 NC', 'NC');
-    decorateFrontTerminal(b, '22 · 常閉 NC', 'NC');
-  }
-}
 function assemble<S extends ComponentState, A extends ComponentAction>(def: ResolvedComponent, behavior: ComponentBehavior<S, A>): ComponentInstance<S, A> {
   const root = new Group(); root.name = def.id; root.userData.componentId = def.id;
-  const model = componentRegistry[def.type]({root, terminals: [], parts: {}, def});
-  configureFrontTerminals(model, def);
+  const builder = componentRegistry[def.visual.model];
+  if (!builder) throw new Error(`找不到 3D 模型：${def.visual.model}`);
+  const model = applyCatalogTerminals(builder({root, terminals: [], parts: {}, def}));
   const {parts} = model;
-  if (parts.cap) parts.cap.userData.action = def.type === 'emergency' ? 'emergency' : 'press';
+  if (parts.cap) parts.cap.userData.action = def.category === 'emergencyStop' ? 'emergency' : 'press';
   if (parts.knob) parts.knob.userData.action = 'selector';
   if (parts.dial) parts.dial.userData.action = 'current';
   if (parts.plunger) parts.plunger.userData.action = 'press';

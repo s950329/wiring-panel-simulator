@@ -1,101 +1,188 @@
-# 配線盤元件架構 · WIRE-R2
+# 配線盤元件架構 · WIRE-R3 / Component Catalog Phase 1–4
 
-本次以使用者已確認的模型與 WIRE-R1 配線行為為基準。重構的目的，是讓新增規格和行為有明確邊界；未增加電路通電求解或拖放編輯器。
+本次重構以既有 WIRE-R3 畫面、端子座標與配線行為為回歸基準，將元件型號、端子與已確認電氣語意整理成可擴充的 Component Catalog。這一輪不新增電路通電求解，也不改變目前盤面的操作語義或 3D 幾何。
 
-## 目前的分工
+## 核心分層
+
+```text
+Component Definition (產品／型號)
+        │
+        ├── category        產品語意
+        ├── behavior        操作／狀態行為
+        ├── visual.model    3D builder registry key
+        ├── terminals       canonical 端子規格
+        └── electrical      已確認內部電氣關係
+        │
+        ▼
+Component Placement (盤面實例)
+        │
+        ▼
+Component Runtime
+        │
+   ┌────┼────┐
+   ▼    ▼    ▼
+ View Wiring Behavior
+```
+
+`shihlin-sp16` 是產品 definition；`MC1` 是盤面上的 instance。相同 definition 可以建立多個獨立 instance，各自持有自己的 root、parts 與 state。
+
+## 模組責任
 
 | 模組 | 責任 |
 |---|---|
-| `src/core/contracts.ts` | 型號、實例配置、端子、狀態、action、behavior、view 契約 |
-| `src/catalog/definitions.ts` | 可重用型號／外觀變體資料；不包含盤面位置或當前狀態 |
-| `src/catalog/resolve.ts` | 解析 definitionId；驗證位置、重複 ID、父元件與循環；白名單合併配置 |
-| `src/layout.ts` | 盤面、線槽、DIN 軌及元件實例的擺放位置 |
-| `src/core/component.ts` | ComponentInstance：獨立狀態、操作入口、view 呼叫、可序列化資料 |
-| `src/core/behaviors.ts` | 純狀態轉換、允許操作、狀態文字與操作描述；不依賴 DOM／Three.js |
-| `src/views/component-view.ts` | ThreeComponentView：把 typed state 反映到既有模型，提供路由姿態同步 |
-| `src/views/inspector.ts` | 由操作描述產生按鈕／選項／滑桿；管理 hold 事件 |
-| `src/core/interactions.ts` | DOM／mesh 動作解析、配線開蓋限制、暫態操作與音效生命週期 |
-| `src/components.ts` | 組合 definition、placement、behavior、model 與 view 的唯一工廠 |
-| `src/views/models.js`、`src/models/mc1.js` | 沿用已核對的 3D 幾何建立器 |
-| `src/wiring/terminals.ts` | 從穩定端點 ID 解析世界變換、盤面座標、出線方向與夾線 anchors |
-| `src/wiring/router.js` | 沿用既有線槽選擇、局部逃逸、避障與電線間距演算法 |
+| `src/core/contracts.ts` | category、visual、terminal、electrical、state、behavior、view 契組 |
+| `src/catalog/definitions.ts` | 聚合各分類 definition、檢查重複 ID 並 deep-freeze |
+| `src/catalog/definitions/*.ts` | contactor、protection、control、indicator、relay、terminal-block 等產品資料 |
+| `src/catalog/resolve.ts` | 驗證 definition、端子／電氣引用、placement 與父子關係 |
+| `src/layout.ts` | 盤面元件實例的位置；不持有產品端子資料 |
+| `src/components.ts` | 組合 definition、placement、behavior、visual builder 與 view |
+| `src/views/catalog-terminals.ts` | Catalog topology 與既有 JS geometry builder 的一致性邊界 |
+| `src/views/models.js`、`src/models/mc1.js` | 既有已核對 3D 幾何建立器；不再是端子規格的資料來源 |
+| `src/wiring/terminals.ts` | 依 Component ID + Terminal ID 解析世界位置與出線方向 |
+| `src/wiring/router.js` | 線槽選擇、局部逃逸、避障與線間距 |
 
-型號與實例的例子：`shihlin-sp16` 是規格，`MC1` 是盤面上的實例。兩顆相同規格共用不可變 definition，但各自建立 root、terminals、parts 和狀態。
+## Category、Behavior、Visual Model
 
-## 操作與更新
+三者分離：
 
-1. UI 或 mesh 互動經過 action 解析與 application guard。
-2. `ComponentInstance.dispatch()` 檢查該 behavior 是否支援操作，不支援則回傳 accepted=false。
-3. behavior 產生新的狀態；實例凍結狀態，外部不能直接修改。
-4. scene 呼叫 `updateView(parent)`；view 更新可動部件。AP1 的連動來自父元件的 pressed。
-5. 需要路由時，WiringController 呼叫 `syncRoutingPose()`，使保險絲蓋到達確定姿態。
+- `category`：產品是什麼，例如 `contactor`、`pushButton`、`lamp`。
+- `behavior`：元件如何改變 state，例如 `contactor`、`button`、`selector`。
+- `visual.model`：使用哪個 3D builder，例如 `contactorSP`、`button`。
 
-按下／釋放、急停、檔位、過載、ON/OFF 與開蓋各有自己的 state。保護蓋 open 不代表保險絲的電气導通。元件從 Map 動態取得時，型別只知道 ComponentRuntime，因此仍由行為做 runtime action 檢查。
+新增新產品型號不再需要擴充封閉的 `ViewType` union。只有真的增加全新 3D 外觀時才需要增加 visual builder；只有既有 behavior 無法表達新的機構／狀態時才新增 behavior。
 
-MomentaryOperations 統一管理按鈕、接觸器與蜂鳴器的暫態操作。失焦、取消、capture loss、隱藏頁面及重繪操作區會釋放暫態按壓；急停鎖定及其他持續狀態保留。
+## Catalog Definition 分類
 
-## 新增型號
+目前定義拆分為：
 
-沿用既有外觀及行為的元件，只需新增 definition 與 placement，例如：
+```text
+src/catalog/definitions/
+├── contactors.ts
+├── protection.ts
+├── controls.ts
+├── indicators.ts
+├── relay.ts
+├── terminal-blocks.ts
+└── shared.ts
+```
+
+`definitions.ts` 是唯一聚合入口；分類檔不得重複產品 ID，且 map key 必須等於 definition.id。
+
+## Terminal Contract
+
+所有目前 22 種產品都必須在 Catalog 宣告端子拓撲。Canonical terminal 只使用：
 
 ```ts
-// definitions.ts 的一項資料
 {
-  id: 'button-orange',
-  viewType: 'button',
-  behavior: 'button',
-  name: '橘色按鈕',
-  model: '圓形瞬時按鈕',
-  size: [38, 45, 38],
-  color: 0xe58b32,
-  hint: '按住按鈕，放開回彈。'
-}
-
-// layout.ts 的實例配置
-{
-  id: 'PB6',
-  definitionId: 'button-orange',
-  x: 500,
-  z: 300,
-  rotation: 0
+  id: 'A1',
+  position: [22, 20, -61],
+  exitDirection: [0, 0, -1],
+  role: 'coil'
 }
 ```
 
-不同外型需要加入新的 viewType／模型建立器。不同功能需要新的 behavior 實作與工廠登錄。UI 從操作描述建立控制項，場景只呼叫 view，因此不需要把每種功能重新寫進 main／scene。
+`localPosition` 與 `electricalRole` 相容 alias 已移除。Runtime、Wiring 與測試使用同一個 `position / exitDirection / role` contract。
 
-本階段 ThreeComponentView 是既有幾何的共用 adapter，動作幅度忠實沿用現有型號。若新增型號的機構動作不同，應提供對應 view 或動畫參數，不應在主程式增加型號特例。
+目前已資料化的範圍包含：
 
-## 端子與配線邊界
+- T20 breaker、雙保險絲座。
+- S-P16、AP-22、S-C21L、CN-18。
+- TH20（TA/TB/TC 電氣角色仍標示 `unverified`）。
+- OMRON P2CF-11 11-pin socket。
+- 46 組與 13 組 terminal strip。
+- PB、Selector、Emergency Stop、Lamp、Buzzer。
 
-端點以 `{component, terminal}` 引用實例和端子 ID，並不儲存 Mesh。TerminalDefinition 是純資料，TerminalView 才持有 Three.js 物件。
+3D builder 仍負責建立螺絲與外殼等幾何；`catalog-terminals.ts` 會逐一比對 builder 產生的 terminal center 與 Catalog `position`。不一致直接失敗，避免存在兩套默默分岔的端子座標。PB／Selector 在 WIRE-R3 新增的第三、第四端子仍由這個 view boundary 產生，並維持 geometry baseline extension 標記。
 
-現階段端子座標仍由已核對的建模函式建立，再在 view 邊界整理成不可變 TerminalDefinition；尚未將所有幾何端子搬成獨立規格資料。這避免本輪維護兩套座標造成差異。
+## Electrical Definition
 
-- localPosition 與 exitDirection 都在**元件局部空間**。
-- 螺絲本身可能旋轉，操作板也會翻轉；路由使用各自的矩陣換算。
-- 插座 9–11 腳明確提供左向出線，路由器不再按型號猜方向。
-- electricalRole 全部保持 unverified，尚未驗證內部電性或導通。
-- escapePath 是保留欄位，目前路由器不使用它；內層端子仍透過原有避障搜尋找到出口。
-- batching 必須保留獨立端子、可動 parts、routingBoxes、action 和 motion envelope，不能把整個元件合成單一障礙盒。
+Electrical Definition 只保存已確認的內部關係，尚未進行通電求解。例如：
 
-placement 記錄初始盤面配置。目前尚未提供拖放及位置寫回 API；未來加入拖放時，需同步 placement、root、附掛元件與受影響電線，不能只修改 root 後直接使用初始配置儲存。
+```ts
+electrical: {
+  coil: {terminals: ['A1', 'A2']},
+  contacts: [
+    {type: 'NO', terminals: ['1L1', '2T1'], controlledBy: 'coil'}
+  ]
+}
+```
 
-## 型別與驗證範圍
+目前已登錄 S-P16、AP-22、S-C21L、CN-18、PB 與 Emergency Stop 等已確認資料。TH20 的 TA/TB/TC 目前只確認幾何與標示，因此不建立推測性的 Electrical Definition。
 
-TypeScript 5.9 採 strict、allowJs、noEmit。新核心採 TS，舊的幾何、場景、主頁與路由演算法暫時為 JS，checkJs 尚未全面開啟。因此本版不宣稱整個專案都已受嚴格型別檢查。
+後續 Electrical Simulation 只能依賴：
 
-- `npm run typecheck`：含負向型別案例，驗證不合法 action、電流值及直接改 state 會被拒絕。
-- `npm test`：型別檢查、原有幾何／MC1／配線測試，以及行為、附掛連動、取消、輸入驗證與序列化。
-- `npm run build`：型別檢查後執行 Vite。
-- `npm run offline`：型別檢查後產生獨立 HTML；驗證內嵌程式的語法與逐位元組一致性。
+```text
+Connection Graph + Component State + Electrical Definition
+```
 
-幾何基準是 WIRE-R1 實際模型的雜湊與全端子座標，不是重構後重新接受的快照。配線測試除了靜態障礙與電線間距，也透過新 action/view API 驗證機構操作後的淨空。
+不得依賴品牌名稱、型號字串或 Three.js mesh。
 
-本輪測試在 Node 中使用 Three.js 幾何與事件物件，不需要 WebGL；它不能取代瀏覽器內的最終畫面與操作驗收。
+## Definition 驗證
 
+`getDefinition()` 會驗證：
+
+- category / behavior / visual.model。
+- size 必須為有限向量。
+- 每個產品必須有至少一個 Catalog terminal。
+- terminal ID 唯一、position / exitDirection 有效。
+- electrical coil / contact 只能引用存在的 terminal。
+- terminal block 的 count / pitch 有效。
+
+`resolvePlacement()` 只接受 instance placement 欄位，不允許透過 placement 覆寫 definition 的 behavior、外觀或產品資料。
+
+## 新增型號
+
+如果新型號沿用既有 visual builder 與 behavior，通常只需增加 definition 與 placement：
+
+```ts
+{
+  id: 'mitsubishi-st20',
+  category: 'contactor',
+  behavior: 'contactor',
+  manufacturer: 'Mitsubishi',
+  model: 'S-T20',
+  visual: {model: 'mitsubishi-st-series'},
+  size: [80, 100, 110],
+  terminals: [...],
+  electrical: {...},
+  hint: '...'
+}
+```
+
+```ts
+{
+  id: 'MC4',
+  definitionId: 'mitsubishi-st20',
+  x: 500,
+  z: 350,
+  rotation: -90
+}
+```
+
+## Wiring 邊界
+
+Wiring 不知道品牌或產品型號，只使用：
+
+```text
+Component ID + Terminal ID
+Position + Exit Direction
+```
+
+端子位置與出線方向皆為 component-local；操作板翻轉或元件旋轉由矩陣轉換成 world coordinates。`escapePath` 仍是預留欄位，目前 router 不讀取。
+
+## 型別與驗證
+
+TypeScript 維持 strict / allowJs / noEmit。既有幾何與 routing JS 是刻意保留的 incremental migration boundary。
+
+- `npm run typecheck`：核心型別與負向型別案例。
+- `npm test`：geometry／MC1／wiring／component／operation-panel + Catalog regression。
+- `npm run offline`：產生 standalone HTML。
+- `npm run build`：執行 typecheck、offline build 與 Vite build。
+
+幾何基準仍是既有 `qa/fixtures/model-baseline.json`。不得因架構搬遷而更新 baseline 來掩蓋 geometry regression。
 
 ## WIRE-R3：操作板姿勢與配線交易
 
 `WiringController.movePanel()` 接收新姿勢與還原函式，套用姿勢後先檢查固定線的淨空；只重算連到操作板或受到遮擋的路徑。新線材全部建好才一次替換，保留 ID、端點、選取與線序。失敗時釋放暫存 mesh 並還原姿勢，不建立穿模替代線。
 
-操作板以 `userData.operationPanel` 標記，閉合時 router 優先從端子壓片邊緣沿後方出口走出，再上升；所有段落仍通過既有實體與線間距檢查。操作板高度與支撐的變更是實體淨空修正，不是改變電性。頁面模式與未完成起點由配線 UI 管理；元件 selection 不再隱含改變操作板姿勢。
+操作板以 `userData.operationPanel` 標記，閉合時 router 優先從端子壓片邊緣沿後方出口走出，再上升；所有段落仍通過既有實體與線間距檢查。頁面模式與未完成起點由配線 UI 管理；元件 selection 不再隱含改變操作板姿勢。

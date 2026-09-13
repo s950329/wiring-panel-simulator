@@ -1,5 +1,5 @@
 import { MathUtils } from 'three';
-import type { ComponentState, ComponentView, ModelContext, TerminalDefinition, ViewContext } from '../core/contracts.ts';
+import type { ComponentState, ComponentView, ModelContext, ViewContext } from '../core/contracts.ts';
 
 /** Adapts the verified model builders to a view contract without rebuilding their geometry. */
 export class ThreeComponentView implements ComponentView<ComponentState> {
@@ -23,18 +23,11 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
     for (const t of this.terminals) {
       if (ids.has(t.id)) throw new Error(`${model.def.id}: 重複端子 ${t.id}`);
       ids.add(t.id);
-      const {localPosition, exitDirection} = t.definition;
-      if (localPosition.length !== 3 || exitDirection.length !== 3 ||
-          [...localPosition, ...exitDirection].some(n => !Number.isFinite(n)) ||
+      const {position, exitDirection} = t.definition;
+      if (position.length !== 3 || exitDirection.length !== 3 ||
+          [...position, ...exitDirection].some(n => !Number.isFinite(n)) ||
           Math.hypot(...exitDirection) === 0) throw new Error(`${model.def.id}:${t.id} 的端子座標或出線方向無效`);
-      const definition: TerminalDefinition = {
-        ...t.definition,
-        ...(t.displayName ? {displayName: t.displayName} : {}),
-        ...(t.group ? {group: t.group} : {}),
-        localPosition: Object.freeze([...localPosition]),
-        exitDirection: Object.freeze([...exitDirection]),
-      };
-      t.definition = Object.freeze(definition);
+      t.definition = Object.freeze(t.definition);
     }
     // These motion envelopes are consumed by collision detection after static batching.
     if (this.parts.bridge) this.parts.bridge.userData.routingMotion = {axis: 1, range: [-3, 0]};
