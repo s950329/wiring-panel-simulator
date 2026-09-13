@@ -1,0 +1,71 @@
+# 電性資料與教學配置
+
+核對日期：2026-09-13。交付範圍：Phase 0–1；核心尚未接入 3D 通電操作。
+
+## teaching-control-v1
+
+這是明示假設的離散教學 profile。`energized` 只表示負載兩端取得同一相符來源的兩個不同電位，不代表已確認實物額定電壓、功率或保護性能。程式每次判定有供電時回報 `RATING_UNVERIFIED`。本次沒有確認實物線圈、燈與蜂鳴器的完整額定標記。
+
+`createTeachingComponent()` 必須由呼叫端明確選用。每個支援模型的 provenance 均指向本文件並保守標成 `teaching-assumption`；下表另外区分可查證的原廠資料、既有照片辨識紀錄與本次教學設定。這些資料沒有自動覆蓋既有幾何 `electricalRole`。
+
+## 端子與接點對照
+
+所有左欄為既有穩定 ID；沒有從顯示文字、Mesh 接觸或路由座標推導導通。
+
+| 實例／型號 | 穩定端子與本 profile 的關係 | 依據與限制 |
+|---|---|---|
+| MC1／S-P16 | `1L1–2T1`、`3L2–4T2`、`5L3–6T3` 隨明確 coil snapshot 閉合；`A1–A2` 為線圈負載 | [原廠 S-P16 圖面](https://global.seec.com.tw/Templates/att/S-P16_P21_P25_E.pdf?lng=en)支持三主極與 A1/A2；現有照片中 A1/A2 辨識紀錄在 `src/models/mc1.js`。實物版本、額定值未確認，程式仍為教學模型。 |
+| MC1 側翼 | `L-B-U/L-B-L/L-F-U/L-F-L/R-B-U/R-B-L/R-F-U/R-F-L` 均未支援 | 原廠圖面有 13–14 NO、21–22 NC，但不能據此把現有八個位置 ID 對上四個原廠編號。上下螺絲是否同點不猜測；任何一端被接入電路即 `MISSING_MODEL`。 |
+| AP1／AP-22 | `53–54`、`83–84` NO；`61–62`、`71–72` NC；由明確 `parentId=MC1` 的 coil snapshot 驅動 | [原廠 AP-4P 型錄頁](https://global.seec.com.tw/en/product/4603.html)確認 AP-22 為 2NO+2NC。各編號與排列沿用既有標示，仍屬教學假設；尚未取得對應實物的端子圖或導通量測。 |
+| TH1／資產標示 TH20 | 三路 `1/L1–2/T1`、`3/L2–4/T2`、`5/L3–6/T3` 固定導通；教學設定 `TC–TB` 常閉，`TC–TA` 常開，`tripped` 使兩者交換 | TC/TA/TB 是使用者照片辨識紀錄（`src/views/models.js`），電性對應未確認。現行 [TH-P20 原廠頁](https://global.seec.com.tw/en/product/4402.html)及[型錄](https://global.seec.com.tw/Templates/att/MS-P.pdf?lng=en)描述 1NO+1NC／95–96、97–98，不足以證實舊資產的三端共點關係。此處**僅為教學 SPDT 假設，不是實物 TH20 規格**；不更改已確認的三個端子 ID。 |
+| PB1–PB5 | `1–2` NO（顯示 13–14）；`3–4` NC（顯示 21–22） | 依既有模型端子／顯示對照，明示教學假設。`pressed=false` 時 NO 斷、NC 通；true 相反。 |
+| ES1 | `1–2` NC（顯示 21–22）；`latched=true` 斷開 | 教學假設，急停復歸只使這個接點閉合。 |
+| SA1 | 位置 0：`1–2` 通；位置 1：全斷；位置 2：`3–4` 通 | 教學真值表，位置 1 為預設停止。既有 UI 的演示狀態不會自動輸入核心。 |
+| QF1／T20 | `L1–T1`、`L2–T2`、`L3–T3` 隨 `on` 同步；初始 false | 教學三極開關，沒有隱含電源或自動保護曲線。 |
+| FU1 | `F1-IN–F1-OUT` 由 `f1Intact`；`F2-IN–F2-OUT` 由 `f2Intact`；初始均 true | 教學理想保險絲；保護蓋 open 不在電性輸入中，不能改變導通。沒有熔斷電流／時間計算。 |
+| TB1／46 格；TB2／13 格 | 每格 `nA–nB` 固定橋接，格與格隔離 | 明示教學端子台假設；不是由兩個螺絲的幾何位置判斷。 |
+| HL1–HL4／BZ1 | `1–2` 分別為燈／蜂鳴器負載 | 教學 profile，額定值未確認；負載不合併兩個 net，不讀取手動亮燈／發聲測試。 |
+| SO1／P2CF-11 | `1…11` 各自隔離 | [OMRON P2CF 官方頁](https://industrial.omron.eu/en/products/p2cf)確認為插座系列；資產為空插座，不加入不存在的插入式繼電器。 |
+| MC2／S-C21L 待核；MC3／CN-18 | 所有現有端子可供識別，但無電性模型 | 未納入首個練習。未接線不妨礙其他電路；接入即 `MISSING_MODEL`。 |
+
+MC1、AP1、TH1 的機械附掛不產生跨元件電線或原廠固定橋接。未核實的實物連接須後續補明確資料，不能用外觀接觸代替。
+
+## 首個可執行配置
+
+外部 `SUPPLY` 使用 `teaching-source` 的 `L/N` 端子；來源 `CONTROL` 明確指定兩端、enabled 與 `teaching-control-v1`。L/N 是本練習的教學名称；核心也容許任意兩端名稱及反向接線，沒有把 A2 寫死為中性線。
+
+| 電線 ID | 起點 | 終點 |
+|---|---|---|
+| feed | SUPPLY.L | PB1.1 |
+| start | PB1.2 | MC1.A1 |
+| return | MC1.A2 | SUPPLY.N |
+
+按鈕放開時線圈開路；輸入 `{inputs: {PB1: {pressed: true}}}` 時線圈得到邏輯供電。這不是自保持練習；單輪結果不自動寫回接點。Phase 2 將以明確的上一輪 coil snapshot 進行同步迭代。
+
+`teaching-motor` 保留外部 `U/V/W` 端子契約，Phase 1 尚無三相負載模型；若接入即診斷缺漏，不能回報運轉。電源與馬達卡片尚未出現在 3D 畫面。
+
+```ts
+import {minimalControlCircuit} from '../src/electrical/catalog.ts';
+import {evaluateCircuit} from '../src/electrical/solver.ts';
+
+const circuit = minimalControlCircuit();
+const evaluation = evaluateCircuit(circuit, {inputs: {PB1: {pressed: true}}});
+// MC1/coil: energized, reason=supply；另有 RATING_UNVERIFIED。
+```
+
+## 計算與診斷邊界
+
+- `buildNetlist()` 合併 wire、固定橋接與閉合接點，保留帶 ID 的導通邊與端點；負載不參與合併。net ID 與輸出均排序，使合法輸入的順序與反向電線不影響結果。
+- `evaluateCircuit()` 單輪計算；不依賴 Three.js、DOM、座標、route points、蓋子或演示狀態。所有輸入保持不變。
+- 回路完整：`energized/supply`；同 net：`unpowered/same-potential`；開路：`unpowered/open`；無啟用來源：`unpowered/source-off`。
+- 不同來源共用任何理想導通 rail：`SOURCE_CONFLICT`；同來源兩端被理想導通短接：`SOURCE_SHORT`。本輪採整體 fault，沒有模擬 QF/FU 實際跳脫。
+- 多個獨立來源經負載形成閉合回路：`UNSUPPORTED_SOURCE_NETWORK`／unknown；沒有回路的單支連線仍為 open。只在這項診斷的路徑搜尋中把來源視為邊，不把電源兩端合併成導線。
+- 負載必須直接跨同一來源的兩個 net，且 profile 相符。串聯負載電壓分配不求解，回報 `UNSUPPORTED_SERIES`。用圖的雙連通區塊找出來源兩端之間的負載路徑，懸空支路維持 open，不誤判成串聯。
+- 未知端點、重複 ID、錯誤定義／輸入、接入的缺漏模型令本輪 unknown，負載不回報成功。未接線的未知模型可留在盤面。預設先做全電路有效性檢查，尚無局部故障隔離。
+- 沒有類比數值、時間、熱、電流、保護協調、任意多來源合成或實物額定安全驗證。
+
+## 驗證與後續核對
+
+`npm run test:electrical` 在 Node 執行純電性測試；`npm test` 另外包含現有模型端子集合與面板姿勢整合檢查，以及原有幾何／路由驗證。
+
+後續實物核對：MC1 八側翼端子逐點導通、AP1 實際端子排列、TH1 TC/TA/TB 真值表、TB 同格橋接及負載額定銘牌。在此之前，以上 teaching profile 不升級為實物已確認規格。

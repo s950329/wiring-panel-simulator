@@ -105,3 +105,11 @@ TypeScript 5.9 採 strict、allowJs、noEmit。新核心採 TS，舊的幾何、
 `layout.panelGateway` 指定過門端子台 TB1 的 B 側朝向操作板，A 側朝向盤內。兩端皆為操作板元件或 TB1 B 側時，路由在端子出口之間直接避障連接，`viaDucts` 為空；搜尋全程限制在端子台朝向操作板的一側，失敗時不繞回盤內線槽。涉及盤內端子的接線沿用線槽規則。
 
 直接路徑仍使用實體淨空、電線間距及自交檢查，並由既有 `movePanel()` 在開闔時重新計算。新增測試涵蓋雙向選取、操作板內跳線，以及 36 個操作板端子同時接至 TB1 B 側後反覆開闔；元件幾何與端子座標保持原基準。
+
+## 電性 Phase 0–1：独立核心
+
+`src/electrical/` 新增純 TypeScript 資料契約、明示教學 catalog、netlist 與單輪 solver。端點仍為 `{component, terminal}`，但不依賴 Three.js 或核心的 view 型別。wire／固定橋接／閉合接點形成 net；負載保留兩個端點並接受明確來源 profile。`load-paths.ts` 使用雙連通區塊區分串聯負載與懸空支路。
+
+`EvaluationState.inputs` 為電性操作，`coils` 為外部提供的線圈 snapshot；求解結果不直接改寫機械 `pressed` 或燈泡測試狀態。完整資料依據、未確認端子、教學假設及 API 範例見 `docs/electrical-models.md`。新增模組尚未由 application／view 匯入，所以畫面與離線 HTML 仍是 WIRE-R5；此 source commit 不代表畫面已有送電模擬。
+
+`npm run test:electrical` 可在沒有 DOM 或 Three.js 匯入的電性測試程式中執行。完整 `npm test` 另比對所有既有元件的端子 ID 並驗證面板翻轉、演示操作不改變相同輸入的電性結果。Phase 2 的穩態回授、三相馬達及 Phase 3–4 的 UI／解釋尚待實作。
