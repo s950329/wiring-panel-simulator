@@ -92,7 +92,6 @@ test('TH20 publishes verified terminal geometry without guessing auxiliary conta
   assert.equal(th.electrical,undefined);
 });
 
-
 test('every current product has catalog-authored terminal topology',()=>{
   const expectedCounts={
     'shihlin-t20':6,
@@ -102,7 +101,7 @@ test('every current product has catalog-authored terminal topology',()=>{
     'terminal-strip-13':26,
   };
   for(const [id,definition] of Object.entries(componentDefinitions)){
-    assert.ok(definition.terminals?.length>0,`${id} must publish terminal topology`);
+    assert.ok(definition.terminals.length>0,`${id} must publish terminal topology`);
   }
   for(const [id,count] of Object.entries(expectedCounts)){
     assert.equal(componentDefinitions[id].terminals.length,count,`${id} terminal count`);
@@ -112,15 +111,15 @@ test('every current product has catalog-authored terminal topology',()=>{
   ]);
 });
 
-test('runtime terminals materialize catalog geometry for every migrated device',()=>{
+test('runtime terminals expose only the canonical catalog contract',()=>{
   for(const source of [...placements,...frontPlacements]){
     const component=createComponent(source);
     assert.equal(component.terminals.length,component.definition.terminals.length);
     for(const terminal of component.terminalDefinitions){
       assert.equal(terminal.position.length,3);
       assert.equal(terminal.exitDirection.length,3);
-      assert.deepEqual(terminal.localPosition,terminal.position);
-      assert.equal(terminal.electricalRole,terminal.role);
+      assert.equal('localPosition' in terminal,false);
+      assert.equal('electricalRole' in terminal,false);
     }
   }
   assert.equal(createComponent(placement('PB1')).terminals.length,4);

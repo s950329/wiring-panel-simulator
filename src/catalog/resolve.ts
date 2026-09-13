@@ -8,11 +8,12 @@ function validateDefinition(d: ComponentDefinition): void {
   if (!d.category || !d.behavior) throw new Error(`${d.id} 缺少 category 或 behavior`);
   if (!d.visual?.model?.trim()) throw new Error(`${d.id} 缺少 visual.model`);
   if (!validVector(d.size)) throw new Error(`${d.id} 的尺寸無效`);
+  if (!d.terminals.length) throw new Error(`${d.id} 缺少 Catalog 端子規格`);
   if (d.category === 'terminalBlock' && (!Number.isInteger(d.count) || !d.count || d.count < 1 || !d.pitch || d.pitch <= 0))
     throw new Error(`${d.id} 的端子數量或間距無效`);
 
   const terminalIds = new Set<string>();
-  for (const terminal of d.terminals ?? []) {
+  for (const terminal of d.terminals) {
     if (!terminal.id.trim() || terminalIds.has(terminal.id)) throw new Error(`${d.id} 的端子 ID 重複或無效：${terminal.id}`);
     terminalIds.add(terminal.id);
     if (!validVector(terminal.position) || !validVector(terminal.exitDirection) || Math.hypot(...terminal.exitDirection) === 0)

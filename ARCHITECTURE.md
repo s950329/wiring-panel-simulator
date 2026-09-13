@@ -1,6 +1,6 @@
-# 配線盤元件架構 · WIRE-R3 / Component Catalog Phase 1
+# 配線盤元件架構 · WIRE-R3 / Component Catalog Phase 1–4
 
-本階段以既有 WIRE-R3 畫面、端子座標與配線行為為回歸基準，開始把元件型號資料改成可擴充的 Component Catalog。重構不新增電路通電求解，也不改變目前盤面的操作語義。
+本次重構以既有 WIRE-R3 畫面、端子座標與配線行為為回歸基準，將元件型號、端子與已確認電氣語意整理成可擴充的 Component Catalog。這一輪不新增電路通電求解，也不改變目前盤面的操作語義或 3D 幾何。
 
 ## 核心分層
 
@@ -10,8 +10,8 @@ Component Definition (產品／型號)
         ├── category        產品語意
         ├── behavior        操作／狀態行為
         ├── visual.model    3D builder registry key
-        ├── terminals       已驗證端子規格
-        └── electrical      已驗證內部電氣關係
+        ├── terminals       canonical 端子規格
+        └── electrical      已確認內部電氣關係
         │
         ▼
 Component Placement (盤面實例)
@@ -24,51 +24,53 @@ Component Runtime
  View Wiring Behavior
 ```
 
-`shihlin-sp16` 是產品 definition；`MC1` 是盤面上的 instance。相同 definition 可以建立多個獨立 instance，各自持有自己的 root、terminals、parts 與 state。
+`shihlin-sp16` 是產品 definition；`MC1` 是盤面上的 instance。相同 definition 可以建立多個獨立 instance，各自持有自己的 root、parts 與 state。
 
-## 目前模組責任
+## 模組責任
 
 | 模組 | 責任 |
 |---|---|
-| `src/core/contracts.ts` | category、visual、型號、placement、terminal、electrical、state、behavior、view 契約 |
-| `src/catalog/definitions.ts` | 可重用產品／型號資料；不包含盤面位置或當前狀態 |
-| `src/catalog/resolve.ts` | 解析 definitionId，驗證 definition、端子／電氣引用、placement、父子關係與循環 |
-| `src/layout.ts` | 盤面、線槽、DIN 軌及元件實例的位置 |
-| `src/components.ts` | 組合 definition、placement、behavior、visual builder 與 view 的唯一工廠 |
-| `src/views/catalog-terminals.ts` | Catalog 端子與舊 JS model builder 的 migration boundary |
-| `src/views/models.js`、`src/models/mc1.js` | 沿用已核對的 3D 幾何建立器 |
-| `src/core/component.ts` | ComponentInstance：獨立狀態、操作入口、view 呼叫與序列化 |
-| `src/core/behaviors.ts` | 純狀態轉換；不依賴 DOM／Three.js |
-| `src/wiring/terminals.ts` | 由穩定端點 ID 解析世界位置、出線方向與夾線 anchors |
+| `src/core/contracts.ts` | category、visual、terminal、electrical、state、behavior、view 契組 |
+| `src/catalog/definitions.ts` | 聚合各分類 definition、檢查重複 ID 並 deep-freeze |
+| `src/catalog/definitions/*.ts` | contactor、protection、control、indicator、relay、terminal-block 等產品資料 |
+| `src/catalog/resolve.ts` | 驗證 definition、端子／電氣引用、placement 與父子關係 |
+| `src/layout.ts` | 盤面元件實例的位置；不持有產品端子資料 |
+| `src/components.ts` | 組合 definition、placement、behavior、visual builder 與 view |
+| `src/views/catalog-terminals.ts` | Catalog topology 與既有 JS geometry builder 的一致性邊界 |
+| `src/views/models.js`、`src/models/mc1.js` | 既有已核對 3D 幾何建立器；不再是端子規格的資料來源 |
+| `src/wiring/terminals.ts` | 依 Component ID + Terminal ID 解析世界位置與出線方向 |
 | `src/wiring/router.js` | 線槽選擇、局部逃逸、避障與線間距 |
 
-## Category、Behavior 與 Visual Model
+## Category、Behavior、Visual Model
 
 三者分離：
 
 - `category`：產品是什麼，例如 `contactor`、`pushButton`、`lamp`。
-- `behavior`：它如何改變 state，例如 `contactor`、`button`、`selector`。
-- `visual.model`：要用哪個 3D builder，例如 `contactorSP`、`button`。
+- `behavior`：元件如何改變 state，例如 `contactor`、`button`、`selector`。
+- `visual.model`：使用哪個 3D builder，例如 `contactorSP`、`button`。
 
-舊版 `ViewType` 是封閉 union；每增加一種外型都必須修改核心型別。Phase 1 改為 `visual.model` registry key，因此增加新的產品型號不需要擴充核心 product-type union。`ResolvedComponent.type` 暫時保留為 `visual.model` 的 compatibility projection，供尚未搬遷的 JS builder 使用。
+新增新產品型號不再需要擴充封閉的 `ViewType` union。只有真的增加全新 3D 外觀時才需要增加 visual builder；只有既有 behavior 無法表達新的機構／狀態時才新增 behavior。
 
-例如：
+## Catalog Definition 分類
 
-```ts
-{
-  id: 'shihlin-sp16',
-  category: 'contactor',
-  behavior: 'contactor',
-  visual: {model: 'contactorSP'},
-  model: 'SHIHLIN S-P16',
-  size: [115, 90, 143],
-  // ...
-}
+目前定義拆分為：
+
+```text
+src/catalog/definitions/
+├── contactors.ts
+├── protection.ts
+├── controls.ts
+├── indicators.ts
+├── relay.ts
+├── terminal-blocks.ts
+└── shared.ts
 ```
 
-## Catalog Terminal
+`definitions.ts` 是唯一聚合入口；分類檔不得重複產品 ID，且 map key 必須等於 definition.id。
 
-Catalog terminal 的 canonical 欄位為：
+## Terminal Contract
+
+所有目前 22 種產品都必須在 Catalog 宣告端子拓撲。Canonical terminal 只使用：
 
 ```ts
 {
@@ -79,25 +81,22 @@ Catalog terminal 的 canonical 欄位為：
 }
 ```
 
-目前已先搬遷：
+`localPosition` 與 `electricalRole` 相容 alias 已移除。Runtime、Wiring 與測試使用同一個 `position / exitDirection / role` contract。
 
-- S-P16 的 16 個端子。
-- PB 的 NO + NC 四端子拓撲。
-- Selector 的兩組四端子拓撲。
-- Emergency Stop 的 NC 雙端子。
-- Lamp／Buzzer 的雙端子位置。
+目前已資料化的範圍包含：
 
-其他既有元件仍由已驗證的 model builder 建立端子。`catalog-terminals.ts` 會把 legacy terminal 正規化為同一個 runtime shape，因此 wiring 與 inspector 不需要同時支援兩種資料格式。
+- T20 breaker、雙保險絲座。
+- S-P16、AP-22、S-C21L、CN-18。
+- TH20（TA/TB/TC 電氣角色仍標示 `unverified`）。
+- OMRON P2CF-11 11-pin socket。
+- 46 組與 13 組 terminal strip。
+- PB、Selector、Emergency Stop、Lamp、Buzzer。
 
-`position` 與 `role` 是新 canonical 欄位。`localPosition` 與 `electricalRole` 在 Phase 1 暫時保留為 runtime compatibility alias，待舊呼叫端全部遷移後移除。
-
-Catalog 已宣告端子時，3D builder 中既有端子的位置必須與 Catalog 一致；不一致會直接拋錯，避免兩套座標悄悄分岔。PB／Selector 新增的第三、第四端子仍由 view migration layer 建立，並保留 WIRE-R3 geometry baseline 的 extension 標記。
+3D builder 仍負責建立螺絲與外殼等幾何；`catalog-terminals.ts` 會逐一比對 builder 產生的 terminal center 與 Catalog `position`。不一致直接失敗，避免存在兩套默默分岔的端子座標。PB／Selector 在 WIRE-R3 新增的第三、第四端子仍由這個 view boundary 產生，並維持 geometry baseline extension 標記。
 
 ## Electrical Definition
 
-Phase 1 只建立資料契約，不執行通電求解。
-
-目前可描述：
+Electrical Definition 只保存已確認的內部關係，尚未進行通電求解。例如：
 
 ```ts
 electrical: {
@@ -108,30 +107,32 @@ electrical: {
 }
 ```
 
-已登錄的資料包括：
+目前已登錄 S-P16、AP-22、S-C21L、CN-18、PB 與 Emergency Stop 等已確認資料。TH20 的 TA/TB/TC 目前只確認幾何與標示，因此不建立推測性的 Electrical Definition。
 
-- S-P16：A1/A2 coil 與三組主接點。
-- PB：一組 NO + 一組 NC。
-- Emergency Stop：一組 NC。
+後續 Electrical Simulation 只能依賴：
 
-尚未充分確認的側翼端子與 Selector 內部導通邏輯不會猜測補上。Electrical Simulation 後續只應讀取 Catalog electrical definition + component state，不應依賴品牌、型號字串或 Three.js mesh。
+```text
+Connection Graph + Component State + Electrical Definition
+```
+
+不得依賴品牌名稱、型號字串或 Three.js mesh。
 
 ## Definition 驗證
 
 `getDefinition()` 會驗證：
 
-- category / behavior / visual.model 是否存在。
-- size 是否為有限向量。
-- authored terminal ID 是否唯一。
-- terminal position / exitDirection 是否有效。
-- electrical coil / contact 是否引用存在的 terminal。
-- terminal block 的 count / pitch 是否有效。
+- category / behavior / visual.model。
+- size 必須為有限向量。
+- 每個產品必須有至少一個 Catalog terminal。
+- terminal ID 唯一、position / exitDirection 有效。
+- electrical coil / contact 只能引用存在的 terminal。
+- terminal block 的 count / pitch 有效。
 
-`resolvePlacement()` 只接受 instance placement 欄位，不允許呼叫端透過 placement 覆寫 definition 的 behavior、外觀或產品資料。
+`resolvePlacement()` 只接受 instance placement 欄位，不允許透過 placement 覆寫 definition 的 behavior、外觀或產品資料。
 
 ## 新增型號
 
-若新型號沿用既有 visual builder 與 behavior，通常只需增加 definition 與 placement：
+如果新型號沿用既有 visual builder 與 behavior，通常只需增加 definition 與 placement：
 
 ```ts
 {
@@ -158,37 +159,23 @@ electrical: {
 }
 ```
 
-如果外觀已存在，只需重用 `visual.model`。只有真正出現新的 3D 外觀時才需要在 view/model registry 新增 builder；不需要再修改核心 ViewType union。只有出現既有 behavior 無法表達的新機構／狀態時，才需要新增 behavior。
-
-## 操作與 Runtime
-
-1. UI 或 mesh interaction 解析成 action。
-2. `ComponentInstance.dispatch()` 由 behavior 驗證 action。
-3. behavior 產生新的 immutable state。
-4. view 依 state 更新可動件。
-5. wiring 需要路由姿態時呼叫 `syncRoutingPose()`。
-
-MomentaryOperations 仍統一管理按鈕、接觸器與蜂鳴器的暫態操作。AP1 的機械連動仍由 parent `pressed` state 傳入 view，不由 Catalog electrical solver 驅動；這是後續 simulation phase 才會調整的邊界。
-
 ## Wiring 邊界
 
-Wiring 不應知道品牌或產品型號，只使用：
+Wiring 不知道品牌或產品型號，只使用：
 
 ```text
 Component ID + Terminal ID
 Position + Exit Direction
 ```
 
-例如：`MC1:A1`。
-
-端子位置與出線方向皆為 component-local，操作板翻轉或元件旋轉由矩陣轉換成 world coordinates。`escapePath` 仍為預留欄位，router 目前不讀取。
+端子位置與出線方向皆為 component-local；操作板翻轉或元件旋轉由矩陣轉換成 world coordinates。`escapePath` 仍是預留欄位，目前 router 不讀取。
 
 ## 型別與驗證
 
 TypeScript 維持 strict / allowJs / noEmit。既有幾何與 routing JS 是刻意保留的 incremental migration boundary。
 
 - `npm run typecheck`：核心型別與負向型別案例。
-- `npm test`：既有 geometry／MC1／wiring／component／operation-panel regression，加上 Catalog regression。
+- `npm test`：geometry／MC1／wiring／component／operation-panel + Catalog regression。
 - `npm run offline`：產生 standalone HTML。
 - `npm run build`：執行 typecheck、offline build 與 Vite build。
 

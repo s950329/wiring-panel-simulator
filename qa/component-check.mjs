@@ -44,7 +44,7 @@ test('product/placement serialization round trips and invalid references fail ea
   assert.throws(() => resolvePlacements([{...data[0], parentId: 'missing'}]), /父元件/);
   assert.throws(() => resolvePlacements([{...data[0], parentId: data[1].id}, {...data[1], parentId: data[0].id}]), /循環/);
   for (const component of components.values()) for (const t of component.terminalDefinitions) {
-    assert.equal(t.localPosition.length, 3); assert.equal(t.exitDirection.length, 3);
+    assert.equal(t.position.length, 3); assert.equal(t.exitDirection.length, 3);
     assert.ok(Math.hypot(...t.exitDirection) > 0);
     assert.deepEqual(JSON.parse(JSON.stringify(t)), t);
   }

@@ -20,7 +20,7 @@ function contracts(
   // @ts-expect-error A product definition cannot contain an instance's location.
   definition.x;
   // @ts-expect-error Every terminal requires an explicit exit direction.
-  const terminal: TerminalDefinition = {id: 'A1', localPosition: [0, 0, 0], electricalRole: 'unverified'};
+  const terminal: TerminalDefinition = {id: 'A1', position: [0, 0, 0], role: 'unverified'};
   return terminal;
 }
 void contracts;

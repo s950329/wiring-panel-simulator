@@ -65,8 +65,8 @@ export interface ComponentDefinition {
   readonly manufacturer?: string;
   readonly size: Vec3;
   readonly visual: VisualDefinition;
-  /** Authored terminal topology. Legacy models may omit this during the staged migration. */
-  readonly terminals?: readonly CatalogTerminalDefinition[];
+  /** Canonical authored terminal topology. Every product definition must publish this. */
+  readonly terminals: readonly CatalogTerminalDefinition[];
   /** Internal electrical relationships. The simulator does not solve these yet. */
   readonly electrical?: ElectricalDefinition;
   readonly hint: string;
@@ -88,13 +88,8 @@ export interface ComponentPlacement {
 /** Compatibility projection for existing geometry builders; type mirrors visual.model during migration. */
 export type ResolvedComponent = ComponentPlacement & Omit<ComponentDefinition, 'id'> & { readonly type: VisualModelId };
 
-/** Runtime terminal data materialized from catalog data or legacy builder coordinates. */
-export interface TerminalDefinition extends CatalogTerminalDefinition {
-  /** @deprecated Use position. Kept until all routing/tests are migrated. */
-  readonly localPosition: Vec3;
-  /** @deprecated Use role. Kept until all callers are migrated. */
-  readonly electricalRole: TerminalRole;
-}
+/** Runtime terminal data is the canonical Catalog terminal contract. */
+export type TerminalDefinition = CatalogTerminalDefinition;
 export interface TerminalView {
   id: string;
   object: Group;
