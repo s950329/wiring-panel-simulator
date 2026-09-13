@@ -138,3 +138,20 @@ ComponentInstance 的 `electricalOutput` 與機械 `state` 分開。模擬中 `p
 `electrical/explanation.ts` 從同一輪 Circuit／SimulationResult 建立中文原因、端點與 wire ID。`traceEndpoint()` 僅追蹤理想導通網路，不跨負載、不推論電流。開路接點只作相鄰證據；halted 只顯示原始診斷和相關接線，不重用中途輸出。
 
 SimulationController 的 `evaluatedCircuit` 快照與 result 同步，停止即清除。simulation-panel 呈現可展開原因、端子定位按鍵；main 的定位入口與可新增電線的 selectTerminal 分開。WiringController 的 evidence 集合只控制材質；配線面板的單線選取、Delete 和歷史復原不會把證據高亮當成可刪除選取。狀態更新清除舊證據，重新追查使用新結果。
+
+
+## WIRE-R8：操作板走線候選重試
+
+TB1:42B → HL4:2 在周邊已有接線時可能失敗，並非空端子被當成占用。`join()` 原先只檢查橋接段與元件／其他線的碰撞；某個轉折順序會折回本線的端子出線段，完整線路的自交檢查才拒絕它。後續高度重試仍選到相同轉折，形成可避開卻連不上線的情況。
+
+操作板直連現在以包含兩端出線段的完整候選路徑做自交判斷，`join()` 在接受候選前執行檢查，失敗就繼續嘗試其他軸向轉折。A* 結果同樣須通過完整候選檢查；搜尋仍有高度與節點上限。未放寬實體淨空、電線間距、半平面限制或自交檢查，也不移動既有線。元件幾何、端子 ID 與電性均未改動。
+
+`qa/panel-route-retry-check.mjs` 重現不同高度端子折返及 22 條周邊線下 42B 仍未使用卻報錯的案例，驗證雙向連接、既有線不變、淨空與面板開闔。這是實際 Three.js 幾何與路由測試，不取代瀏覽器視覺驗收。
+
+## WIRE-R8：快照與選線辨識
+
+`application/board-snapshot.ts` 組合可序列化的元件、幾何姿勢、實體與外接接線、固定組裝連接、模擬及視角資料；格式識別與 `schemaVersion` 分開保存，詳見 `docs/board-snapshot.md`。匯出僅讀取當下狀態，不釋放瞬時輸入、不重新求解或重算路由。配線面板保存最近一次嘗試的兩端、進度、錯誤及成功 wire ID，失敗不會偽造一條接線。
+
+單線選取使用桃紅色並沿既有 `scene.onBeforeRender` 以 1.2 秒週期向淺色變化；未選中線淡化，證據線用青色。每幀從當前 group 找選中 mesh，操作板移動替換 mesh 後仍持續顯示；取消選取、追查或刪線不殘留動畫。`prefers-reduced-motion` 停用顏色變化及接線列動畫，保留高對比。動畫只改材質，不影響路徑、碰撞或電性。
+
+指示燈原有 view 已依手動狀態或模擬供電設定正面鏡片材質的 emissiveIntensity。新增四顆燈的實際 mesh／材質回歸測試，涵蓋手動亮滅、送電及斷電；操作提示說明需收合操作板查看正面。

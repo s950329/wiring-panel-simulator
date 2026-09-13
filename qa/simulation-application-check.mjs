@@ -131,3 +131,21 @@ test('locating while releasing a held button discards changed contact evidence b
   assert.equal(locateEvidence(s, ['start-coil'], () => s.refresh(), () => {}), true);
   assert.equal(s.snapshot().result.iterations, 1); assert.equal(components.get('MC1').pressed, true);
 });
+
+test('all four lamps update the actual rendered lens material for manual, powered and source-off states', () => {
+  const model = buildModel(new T.Scene()), s = new SimulationController(model.components, () => []);
+  const lamps = ['HL1', 'HL2', 'HL3', 'HL4'].map(id => model.components.get(id));
+  for (const c of lamps) {
+    const meshes = []; c.root.traverse(o => {if (o.isMesh && o.material === c.parts.color) meshes.push(o);});
+    assert.ok(meshes.length >= 2, `${c.id} lens and dome must use the material being updated`);
+    c.updateView(undefined, true); assert.equal(c.parts.color.emissiveIntensity, 0);
+    command(s, c.id, 'lamp'); c.updateView(undefined, true); assert.ok(c.parts.color.emissiveIntensity > 0);
+    command(s, c.id, 'lamp'); c.updateView(undefined, true); assert.equal(c.parts.color.emissiveIntensity, 0);
+    s.connectExternal({component: 'CONTROL', terminal: 'L'}, {component: c.id, terminal: '1'});
+    s.connectExternal({component: 'CONTROL', terminal: 'N'}, {component: c.id, terminal: '2'});
+  }
+  s.start();
+  for (const c of lamps) {c.updateView(undefined, true); assert.ok(c.parts.color.emissiveIntensity > 0); assert.match(c.present().status, /供電亮燈/);}
+  s.setPower('control', false);
+  for (const c of lamps) {c.updateView(undefined, true); assert.equal(c.parts.color.emissiveIntensity, 0); assert.equal(c.state.on, false);}
+});

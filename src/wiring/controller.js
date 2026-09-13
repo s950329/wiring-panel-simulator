@@ -3,6 +3,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {routeWire} from './router.js';
 import {collectSolids} from './solids.js';
 import {CollisionWorld} from './collision.js';
+const selectedColor=0xff28a6,flashColor=new T.Color(0xfff3fa);
 export function wireMesh(wire){
  const geometries=[],up=new T.Vector3(0,1,0);
  for(let i=1;i<wire.points.length;i++){
@@ -20,7 +21,21 @@ export class WiringController{
  remove(id){this.assertEditable();const i=this.wires.findIndex(w=>w.id===id);if(i<0)return false;this.wires.splice(i,1);const m=this.group.children.find(m=>m.userData.wireId===id);m.geometry.dispose();m.material.dispose();this.group.remove(m);this.select(null);return true;}
  select(id){this.selected=id;this.evidence=new Set();this.renderSelection();}
  trace(ids){this.selected=null;this.evidence=new Set(ids);this.renderSelection();}
- renderSelection(){const active=!!this.selected||!!this.evidence?.size;for(const m of this.group.children){const highlighted=m.userData.wireId===this.selected||this.evidence?.has(m.userData.wireId);m.material.color.setHex(highlighted?0xffee75:0xffd629);m.material.transparent=active&&!highlighted;m.material.opacity=active&&!highlighted?.22:1;m.material.depthWrite=!active||!!highlighted;}}
+ renderSelection(){
+  const active=!!this.selected||!!this.evidence?.size;
+  for(const m of this.group.children){
+   const selected=m.userData.wireId===this.selected,traced=!!this.evidence?.has(m.userData.wireId),highlighted=selected||traced;
+   m.material.color.setHex(selected?selectedColor:traced?0x31dce5:active?0xa19b7a:0xffd629);
+   m.material.transparent=active&&!highlighted;m.material.opacity=active&&!highlighted ? .16 : 1;m.material.depthWrite=!active||highlighted;
+  }
+ }
+ // One gentle colour cycle per 1.2 seconds; never hide the selected wire or bypass depth testing.
+ animateSelection(timeMs,reducedMotion=false){
+  if(!this.selected)return;
+  const mesh=this.group.children.find(m=>m.userData.wireId===this.selected);if(!mesh)return;
+  const amount=reducedMotion?0:.7*(1-Math.cos(timeMs*Math.PI*2/1200))/2;
+  mesh.material.color.setHex(selectedColor).lerp(flashColor,amount);
+ }
  hasComponent(id){return this.wires.some(w=>w.from.component===id||w.to.component===id);}
  // Compute the complete new pose before replacing any route or mesh. A failed
  // search rolls back the mechanism and leaves IDs, selection and topology intact.

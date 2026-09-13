@@ -82,3 +82,18 @@ test('evidence highlights multiple nets without selecting a deletable wire or ch
   assert.equal(panel.querySelector('[data-wire-all]').disabled, true);
   assert.deepEqual(s.circuit().wires, before);
 });
+
+test('diagnostic export keeps the failed connection endpoints and error without changing selection or wiring', async () => {
+  const {ui, simulation: s, connect} = make();
+  await connect(['TB1', '42B'], ['HL4', '2']);
+  const before = s.circuit().wires;
+  await connect(['TB1', '42B'], ['HL4', '2']);
+  const snapshot = ui.snapshotSession();
+  assert.deepEqual(snapshot.lastAttempt.from, {component: 'TB1', terminal: '42B'});
+  assert.deepEqual(snapshot.lastAttempt.to, {component: 'HL4', terminal: '2'});
+  assert.equal(snapshot.lastAttempt.status, 'failed'); assert.match(snapshot.lastAttempt.error, /已經接線/);
+  assert.deepEqual(snapshot.pending, {component: 'TB1', terminal: '42B'}); assert.equal(snapshot.busy, false);
+  snapshot.lastAttempt.to.terminal = '1'; snapshot.undoOrder.length = 0;
+  assert.equal(ui.snapshotSession().lastAttempt.to.terminal, '2'); assert.equal(ui.snapshotSession().undoOrder.length, 1);
+  assert.deepEqual(s.circuit().wires, before);
+});

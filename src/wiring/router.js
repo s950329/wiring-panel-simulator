@@ -57,10 +57,11 @@ function panelCollision(world,components,collision){
  bounded.clear=(a,b=a)=>allowed(a)&&allowed(b)&&collision.clear(a,b);
  return bounded;
 }
-function join(a,b,c){
+function join(a,b,c,accept=()=>true){
  const orders=[[1,0,2],[1,2,0],[0,2,1],[2,0,1],[0,1,2],[2,1,0]];
- for(const order of orders){const path=[a];let p=[...a];for(const axis of order){p=[...p];p[axis]=b[axis];path.push(p);}if(c.validate(path))return compact(path);}
- return search(a,c,p=>{if(distance(p,b)>9)return null;const options=[[p,[b[0],p[1],p[2]],[b[0],b[1],p[2]],b],[p,[p[0],p[1],b[2]],[p[0],b[1],b[2]],b]];return options.find(q=>c.validate(q))?.slice(1)||null;},p=>p.reduce((s,x,i)=>s+Math.abs(x-b[i]),0),{step:4,limit:22000,bounds:{min:a.map((x,i)=>Math.min(x,b[i])-(i===1?4:20)),max:a.map((x,i)=>Math.max(x,b[i])+(i===1?40:20))}});
+ for(const order of orders){const path=[a];let p=[...a];for(const axis of order){p=[...p];p[axis]=b[axis];path.push(p);}const candidate=compact(path);if(c.validate(candidate)&&accept(candidate))return candidate;}
+ const path=search(a,c,p=>{if(distance(p,b)>9)return null;const options=[[p,[b[0],p[1],p[2]],[b[0],b[1],p[2]],b],[p,[p[0],p[1],b[2]],[p[0],b[1],b[2]],b]];return options.find(q=>c.validate(q))?.slice(1)||null;},p=>p.reduce((s,x,i)=>s+Math.abs(x-b[i]),0),{step:4,limit:22000,bounds:{min:a.map((x,i)=>Math.min(x,b[i])-(i===1?4:20)),max:a.map((x,i)=>Math.max(x,b[i])+(i===1?40:20))}});
+ return path&&accept(path)?path:null;
 }
 export function validateSelf(points){
  const s=segments(points);
@@ -91,8 +92,11 @@ export function routeWire(world,components,from,to,wires=[]){
   const heightA=Math.max(52,ductHeight+8,a.position[1]+16)+4*(tier%7)+8*attempt+(attempt>=2?8:0),heightB=Math.max(52,ductHeight+8,b.position[1]+16)+4*(tier%7)+8*attempt;
   const ea=escape(a,collision,heightA),eb=escape(b,collision,heightB);if(!ea||!eb){if(attempt===0)throw new Error(`${!ea?key(from):key(to)} 的端子出口沒有足夠淨空，請先展開操作板或檢查遮擋`);continue;}
   if(direct){
-   const bridge=join(ea.at(-1),eb.at(-1),collision);if(!bridge)continue;
-   const path=compact([...ea,...bridge.slice(1),...[...eb].reverse().slice(1)]).map(p=>p.map(round));
+   const complete=bridge=>compact([...ea,...bridge.slice(1),...[...eb].reverse().slice(1)]).map(p=>p.map(round));
+   // A clear bridge can still fold back along either terminal lead. Reject that
+   // candidate here so join tries its other turns before raising the route tier.
+   const bridge=join(ea.at(-1),eb.at(-1),collision,p=>validateSelf(complete(p)));if(!bridge)continue;
+   const path=complete(bridge);
    if(collision.validate(path)&&validateSelf(path))return {from:{...from},to:{...to},points:path,viaDucts:[],radius:1};
    continue;
   }

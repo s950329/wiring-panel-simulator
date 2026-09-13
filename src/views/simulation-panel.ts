@@ -20,7 +20,7 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
     <details class="external-connections" open><summary>外接電源與馬達端子</summary><div class="equipment-cards"></div></details>
     <div class="simulation-results" aria-label="負載供電狀態" aria-live="polite"></div>
     <div class="simulation-explanations" aria-label="供電原因與端子定位"></div>
-    <p class="simulation-note">控制與主電源彼此獨立；亮燈或 MC 吸合不代表馬達已取得三相供電。外接卡片是教學設備。</p>
+    <p class="simulation-note">控制與主電源彼此獨立；亮燈或 MC 吸合不代表馬達已取得三相供電。指示燈亮光位於操作板正面，請收合操作板查看。外接卡片是教學設備。</p>
     <details class="assembly-links"><summary>固定組裝連接</summary><div></div></details>`;
   container.prepend(panel);
   const find = <T extends Element>(selector: string): T => {const e = panel.querySelector<T>(selector); if (!e) throw new Error(`缺少介面 ${selector}`); return e;};

@@ -8,8 +8,9 @@ export function createWirePanel(app,{toast,isFlapOpen,onChange,simulation=()=>nu
  let mode='connect',pending=null,busy=false,externalSelected=null;
  let history=[];
  let evidence=new Set();
+ let lastAttempt=null;
  const panel=document.createElement('section');panel.className='wiring-panel';
- panel.innerHTML=`<div class="section-head"><h2>盤面配線</h2><span class="chip">黃色線</span></div><div class="toolgroup wire-modes"><button data-wire-mode="connect" class="active" aria-pressed="true">接線模式</button><button data-wire-mode="operate" aria-pressed="false">元件操作</button></div><p class="wire-prompt" role="status" aria-live="polite"></p><div class="wire-actions"><button data-wire-cancel class="secondary" disabled>取消起點</button><button data-wire-undo class="secondary" disabled>復原上一條</button><button data-wire-all class="secondary" disabled>顯示全部</button></div><div class="wire-list" aria-label="已連接電線"></div><p class="wire-note">盤內沿線槽，操作板側直接走線。外接設備以 E 編號列出端點連接，不畫成盤內電線。接線前請展開操作板。</p>`;
+ panel.innerHTML=`<div class="section-head"><h2>盤面配線</h2><span class="chip">選中：桃紅</span></div><div class="toolgroup wire-modes"><button data-wire-mode="connect" class="active" aria-pressed="true">接線模式</button><button data-wire-mode="operate" aria-pressed="false">元件操作</button></div><p class="wire-prompt" role="status" aria-live="polite"></p><div class="wire-actions"><button data-wire-cancel class="secondary" disabled>取消起點</button><button data-wire-undo class="secondary" disabled>復原上一條</button><button data-wire-all class="secondary" disabled>顯示全部</button></div><div class="wire-list" aria-label="已連接電線"></div><p class="wire-note">選中線以桃紅／白色慢速閃爍，其他線淡化。盤內沿線槽，操作板側直接走線。外接設備以 E 編號列出端點連接，不畫成盤內電線。接線前請展開操作板。</p>`;
  document.querySelector('.select-wrap').before(panel);
  const $=s=>panel.querySelector(s),label=e=>`${e.component}:${e.terminal}`;
  const external=()=>simulation()?.snapshot().externalWires||[];
@@ -46,15 +47,16 @@ export function createWirePanel(app,{toast,isFlapOpen,onChange,simulation=()=>nu
   if(mode!=='connect'||busy||!editable()||!frontAccessible(component))return;
   const endpoint={component,terminal};if(!pending){pending=endpoint;render();return;}
   if(label(pending)===label(endpoint)){toast('請點選另一個端子');return;}if(!frontAccessible(pending.component))return;
-  const from=pending;busy=true;render();await new Promise(resolve=>setTimeout(resolve,30));
+  const from=pending;lastAttempt={from:{...from},to:{...endpoint},status:'routing',error:null,wireId:null};busy=true;render();await new Promise(resolve=>setTimeout(resolve,30));
   try{
    if(!editable())throw new Error('請先停止模擬再修改接線');
    const fixed=simulation()?.snapshot().fixedWires||[];
    if(fixed.some(w=>[label(w.from),label(w.to)].includes(label(from))&&[label(w.from),label(w.to)].includes(label(endpoint))))throw new Error('這兩端已有固定組裝連接');
    const w=isExternalEquipment(from.component)||isExternalEquipment(component)?simulation().connectExternal(from,endpoint):routing.connect(from,endpoint);
+   lastAttempt={...lastAttempt,status:'connected',wireId:w.id};
    evidence.clear();history.push(w.id);externalSelected=w.id.startsWith('E')?w.id:null;if(externalSelected)routing.select(null);
    pending=null;toast(`${w.id} 已接線`);render(`${w.id} 已接線 · ${label(w.from)} → ${label(w.to)}`);
-  }catch(e){render(e.message+'；起點已保留。');toast(e.message);}
+  }catch(e){lastAttempt={...lastAttempt,status:'failed',error:e.message};render(e.message+'；起點已保留。');toast(e.message);}
   finally{busy=false;onChange?.();render($('.wire-prompt').textContent);}
  }
  function setMode(next){
@@ -71,6 +73,7 @@ export function createWirePanel(app,{toast,isFlapOpen,onChange,simulation=()=>nu
  });
  render();document.querySelector('.hint').textContent='點兩個端子接線 · 拖曳環繞 · 點線追查';
  return {routing,pick,select,render,setMode,cancel,trace,clearEvidence,isConnect:()=>mode==='connect'&&editable(),isBusy:()=>busy,
+  snapshotSession:()=>structuredClone({mode,pending,busy,selectedWireId:externalSelected||routing.selected,evidenceIds:[...evidence],undoOrder:history,lastAttempt}),
   movePanel(open,previous){routing.movePanel(()=>app.setFlap(open,true),()=>app.setFlap(previous,true),front);if(editable())setMode(open?'connect':'operate');},
   canMoveCover:id=>!busy&&!routing.hasComponent(id)&&!external().some(w=>w.from.component===id||w.to.component===id)};
 }
