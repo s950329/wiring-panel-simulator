@@ -166,6 +166,8 @@ export const frontPlacements: readonly ComponentPlacement[] = [
 ];
 export const layout=resolvePlacements(placements);
 export const frontControls=resolvePlacements(frontPlacements);
+/** The B row faces the operation plate; the A row serves cabinet wiring. */
+export const panelGateway={component:'TB1',side:'B'} as const;
 export const ducts=[
   {
     "x": 212,

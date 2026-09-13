@@ -77,3 +77,45 @@ test('same-panel wiring moves both endpoints; failed movement preserves pose, ro
  assert.equal(model.flap.rotation.x,Math.PI);assert.deepEqual(model.routing.snapshot(),before);assert.equal(model.routing.selected,selection);assert.equal(model.routing.sequence,sequence);assert.equal(model.routing.group.children[0],mesh);
  model.world.remove(obstacle);move(model,false);assertClear(model);
 });
+
+test('door-side terminals connect directly to the panel without returning across the terminal strip',()=>{
+ const model=make();pose(model,true)();
+ // TB1 B is at z=530, facing the flap; its cabinet-side A row is at z=504.
+ // The shared duct is at z=435. A door-side route must stay beyond z=517.
+ const wires=[
+  model.routing.connect({component:'TB1',terminal:'10B'},{component:'PB1',terminal:'1'}),
+  model.routing.connect({component:'HL4',terminal:'2'},{component:'TB1',terminal:'45B'}),
+  model.routing.connect({component:'PB2',terminal:'1'},{component:'PB3',terminal:'2'})
+ ];
+ const topology=wires.map(w=>({id:w.id,from:w.from,to:w.to}));
+ for(const open of [true,false,true,false]){
+  move(model,open);assertClear(model);
+  for(const wire of model.routing.wires){
+   assert.ok(wire.points.every(p=>p[2]>=517),'panel-side wire must never return to the cabinet side');
+   assert.deepEqual(wire.viaDucts,[],'panel-side wire must not visit a cabinet duct');
+  }
+  assert.deepEqual(model.routing.wires.map(w=>({id:w.id,from:w.from,to:w.to})),topology);
+ }
+ const cabinet=model.routing.connect({component:'TB1',terminal:'10A'},{component:'MC1',terminal:'A1'});
+ assert.ok(cabinet.viaDucts.length>0,'the cabinet-side row still uses cable ducts');
+ assertClear(model);
+});
+
+test('all 36 panel terminals keep door-side routes clear during repeated opening and closing',()=>{
+ const model=make();pose(model,true)();
+ let index=1;
+ for(const id of front)for(const terminal of model.components.get(id).terminals){
+  const a={component:'TB1',terminal:`${index++}B`},b={component:id,terminal:terminal.id};
+  model.routing.connect(...(index%2?[a,b]:[b,a]));
+ }
+ assert.equal(model.routing.wires.length,36);assertClear(model);
+ const topology=model.routing.wires.map(w=>({id:w.id,from:w.from,to:w.to}));
+ for(const open of [false,true,false,true]){
+  move(model,open);assertClear(model);
+  for(const wire of model.routing.wires){
+   assert.deepEqual(wire.viaDucts,[]);
+   assert.ok(wire.points.every(p=>p[2]>=517),'all 36 routes must stay on the door side');
+  }
+  assert.deepEqual(model.routing.wires.map(w=>({id:w.id,from:w.from,to:w.to})),topology);
+ }
+});

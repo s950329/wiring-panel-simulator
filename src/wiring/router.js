@@ -1,7 +1,7 @@
 import {describeTerminal} from './terminals.ts';
 export {describeTerminal} from './terminals.ts';
 import * as T from 'three';
-import {ducts} from '../layout.ts';
+import {ducts,panelGateway} from '../layout.ts';
 import {CollisionWorld,distance,segmentDistance,segments} from './collision.js';
 import {collectSolids} from './solids.js';
 const v=a=>new T.Vector3(...a), round=n=>Math.round(n*1000)/1000;
@@ -43,6 +43,20 @@ function ductPoint(d,p,lane=0,y=48){return d.rotation===90?[Math.max(d.x-d.lengt
 function preferredDuct(info){
  return ducts.map((d,i)=>{const p=ductPoint(d,info.position),delta=v(p).sub(v(info.position));delta.y=0;const toward=delta.clone().normalize().dot(v(info.heading));return {i,score:delta.length()+(toward<.15?500:0)};}).sort((a,b)=>a.score-b.score)[0].i;
 }
+function panelSide(info){
+ return !!info.c.root.parent?.userData.operationPanel||(info.endpoint.component===panelGateway.component&&info.endpoint.terminal.endsWith(panelGateway.side));
+}
+function panelCollision(world,components,collision){
+ // Keep the complete route on the plate-facing side of the gateway, including
+ // local escape searches and A* detours. Never fall back into cabinet ducts.
+ const gateway=components.get(panelGateway.component).root;
+ const matrix=world.matrixWorld.clone().invert().multiply(gateway.matrixWorld);
+ const origin=new T.Vector3().applyMatrix4(matrix),normal=new T.Vector3(0,0,1).transformDirection(matrix);
+ const allowed=p=>v(p).sub(origin).dot(normal)>=-1e-6;
+ const bounded=Object.create(collision);
+ bounded.clear=(a,b=a)=>allowed(a)&&allowed(b)&&collision.clear(a,b);
+ return bounded;
+}
 function join(a,b,c){
  const orders=[[1,0,2],[1,2,0],[0,2,1],[2,0,1],[0,1,2],[2,1,0]];
  for(const order of orders){const path=[a];let p=[...a];for(const axis of order){p=[...p];p[axis]=b[axis];path.push(p);}if(c.validate(path))return compact(path);}
@@ -66,7 +80,9 @@ export function routeWire(world,components,from,to,wires=[]){
  if(from.component===to.component&&from.terminal===to.terminal)throw new Error('請選另一個端子');
  const key=e=>e.component+':'+e.terminal;
  if(wires.some(w=>(key(w.from)===key(from)&&key(w.to)===key(to))||(key(w.to)===key(from)&&key(w.from)===key(to))))throw new Error('這兩個端子已經接線');
- const solids=collectSolids(world),collision=new CollisionWorld(solids,wires),a=describeTerminal(world,components,from),b=describeTerminal(world,components,to),da=preferredDuct(a),db=preferredDuct(b);
+ const solids=collectSolids(world),baseCollision=new CollisionWorld(solids,wires),a=describeTerminal(world,components,from),b=describeTerminal(world,components,to);
+ const direct=panelSide(a)&&panelSide(b),collision=direct?panelCollision(world,components,baseCollision):baseCollision;
+ const da=direct?null:preferredDuct(a),db=direct?null:preferredDuct(b);
  // Stable lanes: keep all existing routes fixed; use free lateral / height slots.
  for(let attempt=0;attempt<9;attempt++){
   const tier=wires.length+attempt,ductHeight=attempt<2?16+4*(tier%6)+Math.floor(tier/42)*28:48+4*tier,lane=[0,-4,4,-8,8,-12,12][tier%7];
@@ -74,6 +90,12 @@ export function routeWire(world,components,from,to,wires=[]){
   // not produce overlapping parallel legs at the same elevation.
   const heightA=Math.max(52,ductHeight+8,a.position[1]+16)+4*(tier%7)+8*attempt+(attempt>=2?8:0),heightB=Math.max(52,ductHeight+8,b.position[1]+16)+4*(tier%7)+8*attempt;
   const ea=escape(a,collision,heightA),eb=escape(b,collision,heightB);if(!ea||!eb){if(attempt===0)throw new Error(`${!ea?key(from):key(to)} 的端子出口沒有足夠淨空，請先展開操作板或檢查遮擋`);continue;}
+  if(direct){
+   const bridge=join(ea.at(-1),eb.at(-1),collision);if(!bridge)continue;
+   const path=compact([...ea,...bridge.slice(1),...[...eb].reverse().slice(1)]).map(p=>p.map(round));
+   if(collision.validate(path)&&validateSelf(path))return {from:{...from},to:{...to},points:path,viaDucts:[],radius:1};
+   continue;
+  }
   const ga=ductPoint(ducts[da],ea.at(-1),lane,ductHeight),gb=ductPoint(ducts[db],eb.at(-1),lane,ductHeight);
   if(da===db&&distance(ga,gb)<8){const axis=ducts[db].rotation===90?0:2;gb[axis]+=gb[axis]>ductPoint(ducts[db],[400,0,320])[axis]?-8:8;const cross=axis===0?2:0;gb[cross]+=lane>0?-8:8;}
   const anchors=[ea.at(-1),[ga[0],heightA,ga[2]],ga];
