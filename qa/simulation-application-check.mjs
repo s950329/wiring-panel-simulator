@@ -4,6 +4,9 @@ import * as T from 'three';
 import {buildModel} from '../src/scene.js';
 import {directOnLineCircuit} from '../src/electrical/exercises.ts';
 import {SimulationController} from '../src/application/simulation.ts';
+import {locateEvidence} from '../src/application/evidence.ts';
+import {MomentaryOperations} from '../src/core/interactions.ts';
+import {traceEndpoint} from '../src/electrical/explanation.ts';
 
 globalThis.document ??= {createElement: () => ({width: 256, height: 256,
   getContext: () => ({fillRect() {}, strokeRect() {}, fillText() {}})})};
@@ -93,4 +96,38 @@ test('panel pose and returned snapshots cannot mutate the electrical session', (
   assert.deepEqual(s.snapshot().result.evaluation, before.result.evaluation);
   before.result.coils.MC1 = false; before.externalWires.length = 0;
   assert.equal(s.snapshot().result.coils.MC1, true); assert.ok(s.snapshot().externalWires.length);
+});
+
+test('fault evidence retains the evaluated source configuration until stop/edit/retry', () => {
+  const {simulation: s} = make();
+  const wire = s.connectExternal({component: 'CONTROL', terminal: 'L'}, {component: 'CONTROL', terminal: 'N'});
+  s.start(); const snapshot = s.snapshot();
+  assert.equal(snapshot.evaluatedCircuit.sources[0].enabled, true);
+  assert.equal(s.circuit().sources[0].enabled, false);
+  snapshot.evaluatedCircuit.wires.length = 0;
+  assert.ok(s.snapshot().evaluatedCircuit.wires.some(w => w.id === wire.id));
+  s.stop(); assert.equal(s.snapshot().evaluatedCircuit, null);
+  s.removeExternal(wire.id); s.start();
+  assert.equal(s.snapshot().result.status, 'stable');
+  assert.equal(s.snapshot().evaluatedCircuit.wires.some(w => w.id === wire.id), false);
+});
+
+test('locating while releasing a held button discards changed contact evidence but keeps equivalent reevaluations', () => {
+  for (const holding of [false, true]) {
+    const {simulation: s, components, wires} = make();
+    if (!holding) wires.splice(wires.findIndex(w => w.id === 'hold-out'), 1);
+    const momentary = new MomentaryOperations(() => {}, (c, action) => s.operate(c.id, action));
+    command(s, 'QF1', 'toggle'); s.start(); momentary.begin(components.get('PB3'), {type: 'press'});
+    const snapshot = s.snapshot();
+    const trace = traceEndpoint(snapshot.evaluatedCircuit, snapshot.result.evaluation, {component: 'MC1', terminal: 'A1'});
+    let highlighted;
+    const current = locateEvidence(s, trace.wireIds, () => momentary.cancel(), ids => {highlighted = ids;});
+    assert.equal(current, false); assert.equal(components.get('MC1').pressed, holding);
+    assert.deepEqual(highlighted, []);
+  }
+  // Re-evaluation can change iteration count without changing the evidence.
+  const {simulation: s, components} = make(); command(s, 'QF1', 'toggle'); s.start(); command(s, 'PB3', 'press');
+  assert.equal(s.snapshot().result.iterations, 2);
+  assert.equal(locateEvidence(s, ['start-coil'], () => s.refresh(), () => {}), true);
+  assert.equal(s.snapshot().result.iterations, 1); assert.equal(components.get('MC1').pressed, true);
 });

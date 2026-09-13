@@ -1,6 +1,6 @@
 # 電性資料與教學配置
 
-核對日期：2026-09-13。交付範圍：Phase 0–3；WIRE-R6 接入送電操作，原因說明及最終瀏覽器 E2E 仍待 Phase 4。
+核對日期：2026-09-13。實作範圍：Phase 0–4；WIRE-R7 已接入送電操作及原因追查。最終瀏覽器驗收另見測試記錄，不能由 Node 測試替代。
 
 ## teaching-control-v1
 
@@ -42,7 +42,7 @@ MC1、AP1、TH1 的機械附掛不產生跨元件電線或原廠固定橋接。�
 
 按鈕放開時線圈開路；輸入 `{inputs: {PB1: {pressed: true}}}` 時線圈得到邏輯供電。這不是自保持練習；`evaluateCircuit()` 的單輪結果不自動寫回接點。Phase 2 的 `settleCircuit()`／`ElectricalSimulator` 以明確的上一輪 coil snapshot 進行同步迭代。
 
-Phase 2 已支援 `teaching-motor` 的外部 `U/V/W` 端子及 `teaching-three-phase-source` 的 `L1/L2/L3`，使用 `teaching-three-phase-v1` profile。三相是同一來源的三個不同相別，不是三個各自衝突的二端來源。電源與馬達卡片尚未出現在 3D 畫面。
+Phase 2 已支援 `teaching-motor` 的外部 `U/V/W` 端子及 `teaching-three-phase-source` 的 `L1/L2/L3`，使用 `teaching-three-phase-v1` profile。三相是同一來源的三個不同相別，不是三個各自衝突的二端來源。Phase 3 已將電源與馬達做成右側外接端子卡片，不新增盤內 3D 幾何。
 
 ```ts
 import {minimalControlCircuit} from '../src/electrical/catalog.ts';
@@ -132,3 +132,14 @@ WIRE-R6 exposes teaching CONTROL L/N, MAIN L1/L2/L3 and M1 U/V/W as endpoint car
 For a supported SP16 parent and TH20 child, `application/equipment.ts` explicitly registers the displayed three assembly straps: 2T1 ↔ 1/L1, 4T2 ↔ 3/L2 and 6T3 ↔ 5/L3. This is an authored teaching assembly configuration, separately listed in the UI, not a mesh-derived connection or a change to the generic solver. The original Phase 2 fixture still declares its own wires explicitly.
 
 The application maps actual button pressed, emergency latched, breaker on, selector position and overload trip inputs into the core. Manual contactor pressed, lamp test and buzzer test never become electrical inputs. `ElectricalOutput` drives the display separately; halted outputs are null and visibly suppressed. Stopping clears transient demonstrations and coil memory, preserving emergency latch, overload trip and all wires. Browser E2E acceptance is tracked after Phase 4.
+
+
+## Phase 4：原因、證據與復原
+
+`explainSimulation()` 只解釋求解器的結果，不重新判定電性。`traceEndpoint()` 回傳端子所在理想導通網路、已開啟的相連電源端及原始 wire ID；不穿過燈、線圈或馬達負載。高亮包含同網路分支，並不表示電流方向或唯一供電路徑。
+
+未供電的線圈會區分控制來源未開啟、同電位和未形成完整回路；相鄰的開路接點是觀察證據，不被宣稱為唯一錯線原因。保持支路說明採條件提示。馬達供電、缺相及重複相別依自身端子結果顯示，不從 MC 吸合推論。未接線的燈／蜂鳴器不重複列出原因卡片。
+
+應用層保留與結果同一輪的 `evaluatedCircuit`，即使短接後模式改為 halted 仍可追查當時接線。halted 沒有有效 evaluation，因此只顯示診斷端子與相關接線，不渲染中途導通網路。停止後清除舊結果，修改接線再重新送電；急停和 TH 仍須各自復歸。
+
+定位按钮不會經過接線端點選取入口；多線證據與可刪除的單線選取分開，操作狀態更新後清除舊高亮。右側 DOL 手動練習對照見 [electrical-user-guide.md](electrical-user-guide.md)。

@@ -1,11 +1,13 @@
 import type {SimulationController} from '../application/simulation.ts';
 import {externalEquipment} from '../application/equipment.ts';
 import type {Endpoint} from '../electrical/contracts.ts';
+import {explainSimulation} from '../electrical/explanation.ts';
 
 export interface SimulationPanelHandlers {
   start(): void;
   stop(): void;
   pick(endpoint: Endpoint): void;
+  locate(endpoint: Endpoint, wireIds: readonly string[]): void;
   isBusy(): boolean;
 }
 /** Controls persist across updates so a pressed button or source switch keeps focus. */
@@ -15,7 +17,9 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
     <p class="simulation-state" role="status" aria-live="polite"></p>
     <div class="simulation-actions"><button data-sim-start>送電模擬</button><button data-sim-stop class="secondary">停止模擬</button></div>
     <div class="supply-switches"><label><input type="checkbox" data-supply="control">控制電源</label><label><input type="checkbox" data-supply="main">主電源</label></div>
-    <div class="equipment-cards"></div><div class="simulation-results" aria-label="負載供電狀態" aria-live="polite"></div>
+    <details class="external-connections" open><summary>外接電源與馬達端子</summary><div class="equipment-cards"></div></details>
+    <div class="simulation-results" aria-label="負載供電狀態" aria-live="polite"></div>
+    <div class="simulation-explanations" aria-label="供電原因與端子定位"></div>
     <p class="simulation-note">控制與主電源彼此獨立；亮燈或 MC 吸合不代表馬達已取得三相供電。外接卡片是教學設備。</p>
     <details class="assembly-links"><summary>固定組裝連接</summary><div></div></details>`;
   container.prepend(panel);
@@ -40,8 +44,11 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
     const p = document.createElement('p'); p.textContent = `${wire.from.component}:${wire.from.terminal} ↔ ${wire.to.component}:${wire.to.terminal}`; assembly.append(p);
   }
   const note = document.createElement('p'); note.textContent = '以上是此教學配置明示的固定連接，對應盤面銅片；非由外觀推算。'; assembly.append(note);
+  let previousMode = simulation.mode;
   function render(): void {
     const s = simulation.snapshot(); panel.dataset.simulationMode = s.mode;
+    if (previousMode !== s.mode) find<HTMLDetailsElement>('.external-connections').open = s.mode === 'off';
+    previousMode = s.mode;
     find('.simulation-state').textContent = s.mode === 'off' ? '未送電 · 可編輯接線' : s.mode === 'halted' ?
       '已暫停 · 停止模擬後檢查接線，再重新送電' : '模擬中 · 可操作按鈕與開關';
     start.disabled = s.mode !== 'off' || handlers.isBusy(); stop.disabled = s.mode === 'off';
@@ -61,6 +68,37 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
       }
     } else {
       const p = document.createElement('p'); p.textContent = s.mode === 'halted' ? '本次結果無法成立，線圈及負載輸出已清除。' : '接好控制回路與主電路，再按「送電模擬」。'; results.append(p);
+    }
+    const explanations = find('.simulation-explanations');
+    const expanded = new Set([...explanations.querySelectorAll<HTMLDetailsElement>('details[open]')].map(e => e.dataset.explanation));
+    explanations.replaceChildren();
+    if (s.evaluatedCircuit) for (const entry of explainSimulation(s.evaluatedCircuit, s.result)) {
+      const details = document.createElement('details'); details.dataset.explanation = entry.id; details.dataset.severity = entry.severity;
+      details.open = s.mode === 'halted' || expanded.has(entry.id);
+      const summary = document.createElement('summary'); summary.textContent = entry.title;
+      const description = document.createElement('p'); description.textContent = entry.detail;
+      details.append(summary, description);
+      const locate = (endpoint: Endpoint, wires: readonly string[], label: string) => {
+        const button = document.createElement('button'); button.className = 'evidence-button'; button.textContent = label;
+        button.onclick = () => handlers.locate(endpoint, wires); return button;
+      };
+      if (entry.traces.length) {
+        for (const trace of entry.traces) {
+          const label = `${trace.endpoint.component}:${trace.endpoint.terminal}`;
+          const row = document.createElement('div'); row.className = 'endpoint-evidence';
+          const source = document.createElement('p'); source.textContent = trace.sources.length ?
+            `相連電源端：${trace.sources.map(e => `${e.component}:${e.terminal}`).join('、')}` : '尚未連到已開啟的電源端';
+          row.append(locate(trace.endpoint, trace.wireIds, `定位 ${label} · 相連導線`), source); details.append(row);
+        }
+        if (entry.openContacts.length) {
+          const note = document.createElement('p'); note.textContent = '與負載導通網路相鄰、目前開路的接點（可能有多個原因）：'; details.append(note);
+          for (const contact of entry.openContacts) for (const endpoint of contact.endpoints)
+            details.append(locate(endpoint, [], `${contact.component} ${contact.id} · ${endpoint.terminal}`));
+        }
+        const note = document.createElement('p'); note.className = 'simulation-note'; note.textContent = '高亮顯示同一導通網路的相連導線，包含分支；不代表電流方向。E 編號與固定銅片連接請對照端點清單。'; details.append(note);
+      } else for (const endpoint of entry.endpoints)
+        details.append(locate(endpoint, entry.wireIds, `定位 ${endpoint.component}:${endpoint.terminal} · 相關接線`));
+      explanations.append(details);
     }
   }
   render(); return {element: panel, render};

@@ -67,3 +67,18 @@ test('pending routing rejects a source start race and every panel deletion path 
   s.stop(); ui.setMode('connect'); await connect(['MC1', 'A1'], ['TB2', '1A']);
   assert.equal(ui.routing.wires.length, 1);
 });
+
+test('evidence highlights multiple nets without selecting a deletable wire or changing topology', async () => {
+  const {ui, simulation: s, panel, connect, key} = make();
+  await connect(['CONTROL', 'L'], ['QF1', 'L1']);
+  await connect(['MC1', 'A1'], ['TB2', '1A']);
+  const before = s.circuit().wires;
+  ui.trace(['E1', 'W01']); assert.equal(ui.routing.selected, null);
+  assert.equal(panel.querySelector('.wire-list').children.filter(r => r.classList.contains('evidence')).length, 2);
+  assert.equal(panel.querySelector('[data-wire-all]').disabled, false);
+  key('Delete'); assert.deepEqual(s.circuit().wires, before);
+  ui.clearEvidence(); ui.render();
+  assert.equal(panel.querySelector('.wire-list').children.some(r => r.classList.contains('evidence')), false);
+  assert.equal(panel.querySelector('[data-wire-all]').disabled, true);
+  assert.deepEqual(s.circuit().wires, before);
+});

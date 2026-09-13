@@ -1,6 +1,7 @@
 import {MomentaryOperations, interactionAction, operate} from './core/interactions.ts';
 import {renderControls} from './views/inspector.ts';
 import {SimulationController} from './application/simulation.ts';
+import {locateEvidence} from './application/evidence.ts';
 import {createSimulationPanel} from './views/simulation-panel.ts';
 import './style.css';
 import {MODEL_REVISION,MODEL_REVISION_LABEL} from './revision.js';
@@ -40,6 +41,7 @@ document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{app.orbit.pre
 if(!inspectMC1){
  wireUI=createWirePanel(app,{toast,isFlapOpen:()=>flapOpen,simulation:()=>simulation,onChange:()=>{renderDetails();simulationUI?.render();}});
  simulation=new SimulationController(app.components,()=>wireUI.routing.wires,()=>{
+  wireUI.clearEvidence();
   const c=app.components.get(currentId);if(c)updateStatus(c);
   sound([...app.components.values()].some(c=>c.audible));simulationUI?.render();wireUI.render();
  });
@@ -47,7 +49,16 @@ if(!inspectMC1){
   isBusy:()=>wireUI.isBusy(),
   start:()=>{if(wireUI.isBusy()){toast('請等接線完成再送電');return;}releaseAll();wireUI.setMode('operate');simulation.start();renderDetails();},
   stop:()=>{releaseAll();simulation.stop();renderDetails();wireUI.render();},
-  pick:endpoint=>{if(wireUI.isConnect()||wireUI.setMode('connect'))wireUI.pick(endpoint.component,endpoint.terminal);}
+  pick:endpoint=>{if(wireUI.isConnect()||wireUI.setMode('connect'))wireUI.pick(endpoint.component,endpoint.terminal);},
+  locate:(endpoint,wireIds)=>{
+   // Evidence inspection never goes through selectTerminal(), which creates wires.
+   const current=locateEvidence(simulation,wireIds,()=>{
+   wireUI.cancel();const c=app.components.get(endpoint.component);
+   if(c){select(c.id);terminalId=endpoint.terminal;app.glowTerminal(c.id,terminalId);app.focus(c.id);renderDetails();updateCameraReadout();}
+   else {const card=[...document.querySelectorAll('[data-external-terminal]')].find(b=>b.dataset.externalTerminal===`${endpoint.component}:${endpoint.terminal}`);if(card){card.closest('details').open=true;card.closest('[data-equipment]').scrollIntoView({block:'nearest'});}}
+   },ids=>wireUI.trace(ids));
+   toast(current?`已定位 ${endpoint.component}:${endpoint.terminal}`:'已定位端子；操作狀態已改變，請重新查看原因');
+  }
  });
 }
 // Explicit development interface: stable IDs and transforms, independent of mesh order.

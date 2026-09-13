@@ -18,7 +18,9 @@ export class WiringController{
  assertEditable(){if(!this.canEdit())throw new Error('請先停止模擬再修改接線');}
  connect(from,to){this.assertEditable();for(const c of this.components.values())c.syncRoutingPose();const route=routeWire(this.world,this.components,from,to,this.wires);route.id='W'+String(++this.sequence).padStart(2,'0');const mesh=wireMesh(route);this.group.add(mesh);this.wires.push(route);this.select(route.id);return route;}
  remove(id){this.assertEditable();const i=this.wires.findIndex(w=>w.id===id);if(i<0)return false;this.wires.splice(i,1);const m=this.group.children.find(m=>m.userData.wireId===id);m.geometry.dispose();m.material.dispose();this.group.remove(m);this.select(null);return true;}
- select(id){this.selected=id;for(const m of this.group.children){const selected=m.userData.wireId===id;m.material.color.setHex(selected?0xffee75:0xffd629);m.material.transparent=!!id&&!selected;m.material.opacity=id&&!selected?.22:1;m.material.depthWrite=!id||selected;}}
+ select(id){this.selected=id;this.evidence=new Set();this.renderSelection();}
+ trace(ids){this.selected=null;this.evidence=new Set(ids);this.renderSelection();}
+ renderSelection(){const active=!!this.selected||!!this.evidence?.size;for(const m of this.group.children){const highlighted=m.userData.wireId===this.selected||this.evidence?.has(m.userData.wireId);m.material.color.setHex(highlighted?0xffee75:0xffd629);m.material.transparent=active&&!highlighted;m.material.opacity=active&&!highlighted?.22:1;m.material.depthWrite=!active||!!highlighted;}}
  hasComponent(id){return this.wires.some(w=>w.from.component===id||w.to.component===id);}
  // Compute the complete new pose before replacing any route or mesh. A failed
  // search rolls back the mechanism and leaves IDs, selection and topology intact.
@@ -33,7 +35,7 @@ export class WiringController{
    this.wires=this.wires.map(w=>replacements.get(w.id)||w);
   }catch(error){for(const mesh of prepared){mesh.geometry.dispose();mesh.material.dispose();}restorePose();throw error;}
   for(const mesh of prepared){const previous=this.group.children.find(m=>m.userData.wireId===mesh.userData.wireId);this.group.remove(previous);previous.geometry.dispose();previous.material.dispose();this.group.add(mesh);}
-  this.select(this.selected);
+  this.renderSelection();
  }
  snapshot(){return structuredClone(this.wires);}
 }

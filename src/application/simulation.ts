@@ -11,6 +11,7 @@ export interface SimulationSnapshot {
   readonly mode: SimulationMode;
   readonly power: Readonly<{control: boolean; main: boolean}>;
   readonly result: SimulationResult | null;
+  readonly evaluatedCircuit: Circuit | null;
   readonly externalWires: readonly Wire[];
   readonly fixedWires: readonly Wire[];
 }
@@ -19,6 +20,7 @@ export class SimulationController {
   #mode: SimulationMode = 'off';
   #session = new ElectricalSimulator();
   #result: SimulationResult | null = null;
+  #evaluatedCircuit: Circuit | null = null;
   #power = {control: true, main: true};
   #external: Wire[] = [];
   #sequence = 0;
@@ -30,7 +32,7 @@ export class SimulationController {
   get mode(): SimulationMode {return this.#mode;}
   get canEdit(): boolean {return this.#mode === 'off';}
   snapshot(): SimulationSnapshot {return structuredClone({mode: this.#mode, power: this.#power, result: this.#result,
-    externalWires: this.#external, fixedWires: this.#fixedWires});}
+    evaluatedCircuit: this.#evaluatedCircuit, externalWires: this.#external, fixedWires: this.#fixedWires});}
   circuit(): Circuit {
     return {components: electricalComponents(this.components), wires: structuredClone([...this.wires(), ...this.#external, ...this.#fixedWires]),
       sources: [{id: 'CONTROL-SUPPLY', a: {component: 'CONTROL', terminal: 'L'}, b: {component: 'CONTROL', terminal: 'N'},
@@ -63,11 +65,12 @@ export class SimulationController {
     return this.refresh()!;
   }
   stop(): void {
-    this.#mode = 'off'; this.#session.reset(); this.#result = null; this.clearTransient(); this.publish();
+    this.#mode = 'off'; this.#session.reset(); this.#result = null; this.#evaluatedCircuit = null; this.clearTransient(); this.publish();
   }
   refresh(): SimulationResult | null {
     if (this.#mode !== 'running') return this.#result ? structuredClone(this.#result) : null;
-    this.#result = this.#session.step(this.circuit(), this.inputs());
+    this.#evaluatedCircuit = this.circuit();
+    this.#result = this.#session.step(this.#evaluatedCircuit, this.inputs());
     if (this.#result.status === 'halted') this.#mode = 'halted';
     this.publish(); return structuredClone(this.#result);
   }

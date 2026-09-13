@@ -131,3 +131,10 @@ TypeScript 5.9 採 strict、allowJs、noEmit。新核心採 TS，舊的幾何、
 ComponentInstance 的 `electricalOutput` 與機械 `state` 分開。模擬中 `pressed`／`audible` 及 lamp view 使用穩態輸出；AP view 讀父接觸器的有效吸合狀態。`present()` 移除手動 MC／燈／蜂鳴器演示，application 操作入口也拒絕它們。MomentaryOperations 透過同一操作入口釋放瞬時輸入。
 
 送電前清除演示狀態與舊線圈記憶；停止保留接線、急停與 TH 跳脫。實體／外接線的底層 mutation guard 與 UI 均鎖定 active／halted 模式，非同步走線完成前禁止送電；幾何 movePanel 不屬電路編輯。Phase 3 的 Node 測試包含真實元件、完整走線、面板移動、供電與編輯防護；瀏覽器 E2E 留待 Phase 4 完成後驗收。
+
+
+## 電性 Phase 4：WIRE-R7 證據與復原
+
+`electrical/explanation.ts` 從同一輪 Circuit／SimulationResult 建立中文原因、端點與 wire ID。`traceEndpoint()` 僅追蹤理想導通網路，不跨負載、不推論電流。開路接點只作相鄰證據；halted 只顯示原始診斷和相關接線，不重用中途輸出。
+
+SimulationController 的 `evaluatedCircuit` 快照與 result 同步，停止即清除。simulation-panel 呈現可展開原因、端子定位按鍵；main 的定位入口與可新增電線的 selectTerminal 分開。WiringController 的 evidence 集合只控制材質；配線面板的單線選取、Delete 和歷史復原不會把證據高亮當成可刪除選取。狀態更新清除舊證據，重新追查使用新結果。
