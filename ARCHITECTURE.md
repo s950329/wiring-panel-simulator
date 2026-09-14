@@ -183,3 +183,14 @@ ThreeComponentView 在建立時即把四顆指示燈設為熄滅材質，原始�
 使用者畫面確認 R11 的亮燈呈粉白與近白綠色。R10 留下的亮燈基底最大線性通道 1 加上自發光 3.2，在 ACESFilmicToneMapping／exposure 1.25 下過度壓縮並降低飽和度。亮燈現在沿用 R11 的 0.3 燈罩基底，只加入 0.45 自發光；熄燈外觀、全景照明、幾何與電路行為不變。R8～R12 快照皆可匯入。
 
 既有測試保留逐盞亮滅、鄰燈不受影響與供電斷電；移除迫使顏色過曝的跨色亮度倍率門檻，改為自身亮度增加及色彩保留。新增 CPU 色調映射回歸，依已安裝 Three r180 的 ACES 公式、場景 exposure 與三種中性漫反射樣本，檢查白色未逼近全白、黃紅綠仍有通道差異及飽和度；舊設定會失敗。這不包含完整 GPU 照明、陰影或鏡面反射，不能替代瀏覽器目視驗收。既有 WebGL 停用限制見 `docs/wire-r10-acceptance.md`。
+
+
+## WIRE-R14：單一來源與相間控制供電
+
+整合 R13 動態專案格式。正常頁改用 `project/simulation.ts`，不再使用有獨立 CONTROL／MAIN 勾選的歷史 controller。專案驗證依電性規格類型限制零／一個三相來源，拒絕 `parameters.enabled`／available；default 與 A04 顯式使用 AC220 教學來源。完整供電拓樸與器件狀態是唯一輸入，QF1 OFF 不全域 disable 來源。
+
+`ThreePhaseSource.lineToLine` 是可選的相對宣告。`electrical/line-to-line.ts` 驗證；`power.twoTerminalSupplies()` 建立一般負載匹配候選，沿用原來源 ID。候選不是 Source、不能進入導通 union 或馬達三相索引。`solver` 先檢查原始來源的短路／混源，再匹配相對與 profile；來源證據由該輪結果輸出。未宣告能力不自動允許相間負載。
+
+`project/legacy.ts` 拒絕仍接 CONTROL 的舊檔，保留原檔／原 runtime；只有無引用的自動 CONTROL 可在轉換副本移除並回報 conversionNotes。舊 generic MAIN 不升級能力，舊 main=false 無法映射為 QF1 時拒絕。正常新格式不保存來源可用勾選。
+
+全部先通過原生路由與操作板姿態驗證，才交易式替換。`examples/a04-motor-start.project.json` 有28條盤內線、6條外接線，QF1初始OFF。歷史 `application/simulation.ts`、舊快照與單元件入口仍供舊核心回歸／除錯，不是正常頁的雙供電模式。完整驗收與環境限制見 `docs/a04-single-source-acceptance.md`。

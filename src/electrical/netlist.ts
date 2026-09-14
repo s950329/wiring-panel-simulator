@@ -1,3 +1,4 @@
+import {validLineToLine} from './line-to-line.ts';
 import type {Circuit, Component, ConductingEdge, ContactResult, Diagnostic, Endpoint, EvaluationState, Netlist} from './contracts.ts';
 
 export const endpointKey = (e: Endpoint): string => JSON.stringify([e.component, e.terminal]);
@@ -61,6 +62,7 @@ export function buildNetlist(circuit: Circuit, state: EvaluationState = {}): Net
     if (!s.profile || typeof s.enabled !== 'boolean') error('INVALID_DEFINITION', s.id);
   }
   for (const s of circuit.threePhaseSources ?? []) {
+    if (!validLineToLine(s.lineToLine)) error('INVALID_DEFINITION', `${s.id}/lineToLine`);
     register(sourceIds, s.id, s.id);
     for (const e of s.phases) participating(e, s.id);
     if (!s.profile || typeof s.enabled !== 'boolean' || s.phases.length !== 3 ||

@@ -9,7 +9,7 @@ export function saveDownload(file:{filename:string;mimeType:string;content:strin
  try{link.href=url;link.download=file.filename;link.click();}finally{setTimeout(()=>URL.revokeObjectURL(url),1000);}
 }
 interface FileHandlers{
- load(read:()=>Promise<string>,progress:(p:ProjectProgress)=>void):Promise<{connections:number;convertedLegacy:boolean}>;
+ load(read:()=>Promise<string>,progress:(p:ProjectProgress)=>void):Promise<{connections:number;convertedLegacy:boolean;conversionNotes?:string[]}>;
  cancel():void;export():ProjectDocument;debug?():unknown;changed?():void;isBusy?():boolean;
 }
 export function createProjectFiles(container:HTMLElement,handlers:FileHandlers){
@@ -19,7 +19,7 @@ export function createProjectFiles(container:HTMLElement,handlers:FileHandlers){
  const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.hidden=true;input.dataset.projectFile='';
  const cancelButton=document.createElement('button');cancelButton.className='secondary';cancelButton.textContent='取消匯入';cancelButton.hidden=true;cancelButton.dataset.projectCancel='';
  const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.dataset.projectStatus='';
- status.textContent='保存配置與端子接線；匯入會重建盤面、重新走線，並保持未送電。';let busy=false,disposed=false;
+ status.textContent='保存配置與端子接線；匯入會重建盤面、重新走線，保持配線模式，模擬未執行。';let busy=false,disposed=false;
  section.append(exportButton,importButton,input,cancelButton,status);container.prepend(section);
  const render=()=>{importButton.disabled=busy||!!handlers.isBusy?.();exportButton.disabled=busy||!!handlers.isBusy?.();cancelButton.hidden=!busy;handlers.changed?.();};
  importButton.onclick=()=>{if(!disposed&&!busy&&!handlers.isBusy?.())input.click();};
@@ -31,7 +31,7 @@ export function createProjectFiles(container:HTMLElement,handlers:FileHandlers){
    if(file.size>PROJECT_LIMITS.bytes)throw new Error('JSON 檔案超過 10 MB');
    busy=true;render();status.textContent='正在讀取專案…';
    const result=await handlers.load(()=>file.text(),p=>{if(!disposed)status.textContent=`${p.phase==='route'?'自動走線':p.phase==='panel'?'檢查操作板':'重建專案'} ${p.completed} / ${p.total} · ${p.detail}`;});
-   if(!disposed)status.textContent=`${result.convertedLegacy?'已轉換舊快照，':''}已匯入 ${result.connections} 條接線；目前未送電。`;
+   if(!disposed)status.textContent=`${result.convertedLegacy?'已轉換舊快照，':''}已匯入 ${result.connections} 條接線；模擬未執行。${(result.conversionNotes??[]).join(" ")}`;
   }catch(error){if(!disposed)status.textContent=`匯入未完成：${error instanceof Error?error.message:String(error)}。原專案已保留。`;}
   finally{busy=false;input.value='';if(!disposed)render();}
  };

@@ -1,7 +1,7 @@
-name: Verify configurable wiring projects
+name: Verify single-source wiring board
 on:
   push:
-    branches: [main, feature/project-format-v1]
+    branches: [main, feature/project-format-v1, feature/a04-single-source]
   pull_request:
 permissions:
   contents: read
@@ -15,7 +15,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.16.0'
           cache: npm
       - run: npm ci
       - run: npm test | tee unit-tests.log
@@ -30,17 +30,17 @@ jobs:
           python qa/project-browser-check.py http://127.0.0.1:4173
       - name: Package verified source
         run: |
-          git archive --format=zip --output=wiring-panel-WIRE-R13-source.zip HEAD
+          git archive --format=zip --output=wiring-panel-WIRE-R14-source.zip HEAD
           git rev-parse HEAD > verified-commit.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: project-format-verification
+          name: single-source-verification
           path: |
             qa-results/
             dist/
             downloads/
             unit-tests.log
             verified-commit.txt
-            wiring-panel-WIRE-R13-source.zip
+            wiring-panel-WIRE-R14-source.zip
           retention-days: 7

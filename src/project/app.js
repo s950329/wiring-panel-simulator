@@ -85,9 +85,9 @@ export function startProjectApp(){
  }
  async function loadProject(source,onProgress){
   if(wireUI?.isBusy())throw new Error('正在完成接線，請稍後再匯入');
-  if(active().simulation.mode!=='off')throw new Error('請先停止模擬再匯入專案');
+  if(active().simulation.mode!=='off')throw new Error('請先返回配線模式再匯入專案');
   releaseAll();const promise=session.load(source,{onProgress});lockControls();
-  try{const result=await promise;installRuntime();toast('專案已重建，尚未送電');return{connections:result.runtime.connectionOrder().length,convertedLegacy:result.convertedLegacy};}
+  try{const result=await promise;installRuntime();toast('專案已重建，模擬未執行');return{connections:result.runtime.connectionOrder().length,convertedLegacy:result.convertedLegacy,conversionNotes:result.conversionNotes};}
   finally{lockControls();}
  }
  const motionPreference=window.matchMedia('(prefers-reduced-motion: reduce)');installRuntime();
@@ -95,7 +95,7 @@ export function startProjectApp(){
   debug:()=>({format:'wiring-panel-debug',schemaVersion:1,revision:MODEL_REVISION,project:active().exportProject(),routes:active().routing.snapshot(),simulation:active().simulation.snapshot(),session:wireUI.snapshotSession(),camera:{azimuth:app.orbit.azimuth,elevation:app.orbit.elevation,radius:app.orbit.radius}}),changed:lockControls,isBusy:()=>!!wireUI?.isBusy()});
  $('#project-name').onchange=()=>{if(session.busy)return;const name=$('#project-name').value.trim();if(name)active().project.name=name;else delete active().project.name;$('#project-meta').textContent=name||'配線專案';};
  $('#component-select').onchange=()=>select($('#component-select').value);
- $('#reset-project').onclick=async()=>{try{await loadProject(JSON.stringify(defaultProject()),p=>{filesUI.status.textContent=`載入預設盤面 · ${p.detail}`;});filesUI.status.textContent='已載入預設空盤面，未送電。';}catch(error){toast(error.message);}finally{filesUI.render();}};
+ $('#reset-project').onclick=async()=>{try{await loadProject(JSON.stringify(defaultProject()),p=>{filesUI.status.textContent=`載入預設盤面 · ${p.detail}`;});filesUI.status.textContent='已載入預設空盤面，模擬未執行。';}catch(error){toast(error.message);}finally{filesUI.render();}};
  $('#flap-btn').onclick=()=>changeFlap(!active().panelOpen);
  $('#inspect-component').onclick=()=>{if(isBusy()||!currentId)return;releaseAll();inspected=inspected?null:currentId;app.inspect(inspected);$('#inspect-component').textContent=inspected?'返回完整盤面':'單獨檢視選中元件';updateCamera();};
  $('#grid-btn').onclick=()=>{app.grid.visible=!app.grid.visible;$('#grid-btn').setAttribute('aria-pressed',String(app.grid.visible));};

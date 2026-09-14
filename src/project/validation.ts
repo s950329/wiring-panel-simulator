@@ -38,6 +38,7 @@ export function validateProject(value: unknown): ProjectDocument {
     const definitionId=text(c.definitionId,`${path}.definitionId`);let info:ReturnType<typeof definitionInfo>;
     try{info=definitionInfo(definitionId);}catch{throw new Error(`${path}.definitionId：未知型號 ${definitionId}`);}
     requireField(c.definitionVersion===1,`${path}.definitionVersion`,'未知型號契約版本');
+    requireField(info.kind!=='control-source',`${path}.definitionId`,'本盤只允許單一三相來源，不支援獨立控制電源；請使用修正後的 A04 範例');
     let placement:Placement=null;
     if(c.placement===null)requireField(info.external,`${path}.placement`,'此元件需要安裝位置');
     else{
@@ -72,6 +73,7 @@ export function validateProject(value: unknown): ProjectDocument {
     requireField((g.boardSide==='A'||g.boardSide==='B')&&(g.panelSide==='A'||g.panelSide==='B')&&g.boardSide!==g.panelSide,'configuration.panelGateway','盤側與操作板側須為不同的 A／B 組');
     panelGateway={panelId:operationPanel.id,component:c.id,boardSide:g.boardSide,panelSide:g.panelSide};
   }
+  requireField(components.filter(c=>definitionInfo(c.definitionId).kind.endsWith('-source')).length<=1,'configuration.components','本盤只允許一組外接電源');
   const configuration:ProjectConfiguration={units:{position:'scene-units',rotation:'degrees'},board,operationPanel,rails,ducts,components,assemblies,panelGateway};
   const mounts=resolveMounts(configuration),endpointSet=new Set<string>();
   for(const c of components)for(const t of definitionInfo(c.definitionId).terminals)endpointSet.add(`${c.id}:${t}`);

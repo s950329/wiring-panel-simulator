@@ -41,9 +41,9 @@ test('connections validate undirected duplication and endpoints but permit disti
   p.connections=[{from:ep('coil','unknown'),to:ep('breaker','T1')}];assert.throws(()=>load(p),/unknown/);
 });
 test('external source instances use explicit capabilities, no prescribed IDs or implicit additions',()=>{
-  const p=minimalProject();p.configuration.components=[{id:'supply-A',definitionId:'teaching-source',definitionVersion:1,placement:null,parameters:{enabled:false}}];
+  const p=minimalProject();p.configuration.components=[{id:'supply-A',definitionId:'teaching-ac220-three-phase-source',definitionVersion:1,placement:null}];
   const out=load(p);assert.equal(out.configuration.components.length,1);
-  assert.deepEqual(out.configuration.components[0].parameters,{enabled:false});
+  assert.equal(out.configuration.components[0].parameters,undefined);
   p.configuration.components[0].definitionId='shihlin-t20';assert.throws(()=>load(p),/placement|安裝/);
 });
 test('resource limits are enforced before model construction and transient inputs cannot become saved outputs',()=>{
@@ -57,7 +57,7 @@ test('resource limits are enforced before model construction and transient input
 test('default BOARD 024 is a portable project datum rather than an import whitelist',async()=>{
   const m=await import('../src/project/default-project.ts').catch(()=>({}));
   assert.equal(typeof m.defaultProject,'function');
-  const p=m.defaultProject(),out=load(p);assert.equal(out.configuration.components.length,25);
+  const p=m.defaultProject(),out=load(p);assert.equal(out.configuration.components.length,24);
   const first=p.configuration.components[0];first.id='changed';assert.notEqual(m.defaultProject().configuration.components[0].id,'changed');
   assert.equal(out.configuration.assemblies.length,1);
 });

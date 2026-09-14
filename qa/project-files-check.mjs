@@ -6,9 +6,9 @@ function make(overrides={}){globalThis.document={createElement:()=>new Element()
  const handlers={load:async read=>{events.push('lock');const text=await read();events.push(text);return{connections:3,convertedLegacy:false}},cancel:()=>events.push('cancel'),export:()=>({format:'wiring-panel-project',schemaVersion:1,name:'Test',configuration:{},connections:[]}),changed:()=>events.push('changed'),...overrides};
  assert.equal(typeof files.createProjectFiles,'function');return{...files.createProjectFiles(new Element(),handlers),events,handlers};}
 test('project file input locks through source callback, shows progress, cancels and clears the same chooser',async()=>{
- let finish;const ui=make({load:async(read,progress)=>{progress({phase:'route',completed:1,total:3,detail:'a:1 → b:2'});await read();return{connections:3,convertedLegacy:true}}});
+ let finish;const ui=make({load:async(read,progress)=>{progress({phase:'route',completed:1,total:3,detail:'a:1 → b:2'});await read();return{connections:3,convertedLegacy:true,conversionNotes:["已移除未接線 CONTROL"]}}});
  ui.input.files=[{size:20,text:()=>new Promise(r=>finish=r)}];const work=ui.input.onchange();assert.equal(ui.importButton.disabled,true);assert.equal(ui.cancelButton.hidden,false);assert.match(ui.status.textContent,/1.*3/);
- ui.cancelButton.onclick();assert.ok(ui.events.includes('cancel'));finish('{}');await work;assert.equal(ui.input.value,'');assert.equal(ui.importButton.disabled,false);assert.match(ui.status.textContent,/舊.*3|3.*舊/);
+ ui.cancelButton.onclick();assert.ok(ui.events.includes('cancel'));finish('{}');await work;assert.equal(ui.input.value,'');assert.equal(ui.importButton.disabled,false);assert.match(ui.status.textContent,/舊.*3|3.*舊/);assert.match(ui.status.textContent,/已移除未接線 CONTROL/);
 });
 test('oversized, read and reconstruction errors preserve the original and remain visible',async()=>{
  let called=0;const ui=make({load:async read=>{called++;await read();throw new Error('第 2 條接線 a:1 → b:2 無路徑')}});

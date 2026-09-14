@@ -4,3 +4,7 @@ dist/
 downloads/
 public/wiring-panel.html
 public/reference/
+
+qa-results/
+__pycache__/
+*.pyc

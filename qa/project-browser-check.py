@@ -5,6 +5,7 @@ Controls receive real pointer events; no production test flags or fake results.
 from pathlib import Path
 import json
 import sys
+import os
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4173'
@@ -31,7 +32,7 @@ def ready(page):
 def load(page, filename):
     page.locator('[data-project-file]').set_input_files(ROOT / 'examples' / filename)
     page.wait_for_function("document.querySelector('[data-project-status]').textContent.includes('已匯入')", polling=100, timeout=90000)
-    assert '未送電' in page.locator('[data-project-status]').inner_text()
+    assert '模擬未執行' in page.locator('[data-project-status]').inner_text()
 
 
 def energized(page, component, value):
@@ -51,6 +52,11 @@ def pointer_target(button):
 
 def click(page, button):
     page.mouse.click(*pointer_target(button))
+
+
+def toggle_qf(page):
+    page.locator('#component-select').select_option('QF1')
+    click(page, page.locator('#details .actions button').filter(has_text='切換 ON／OFF'))
 
 
 def press(page, component, assertion):
@@ -78,15 +84,27 @@ def capture(page, name):
 def run(browser, page):
     page.goto(BASE, wait_until='networkidle')
     ready(page)
-    check(page.evaluate('window.wiringLab.getRevision()') == 'WIRE-R13', 'R13 boot')
+    check(page.evaluate('window.wiringLab.getRevision()') == 'WIRE-R14', 'R14 boot')
     check(page.locator('#component-select option').count() == 22, 'default 22 components')
     load(page, 'a04-motor-start.project.json')
-    check(page.evaluate('window.wiringLab.getWires().length') == 26, 'A04 native route import')
+    check(page.evaluate('window.wiringLab.getWires().length') == 28, 'A04 native route import')
+    check(page.locator('[data-source], .supply-switches').count() == 0, 'no independent source controls')
+    check(page.locator('.equipment-card').count() == 2 and page.locator('[data-equipment="CONTROL"]').count() == 0, 'only MAIN supply and M1 motor equipment')
+    check(not page.evaluate("window.wiringLab.getProject().configuration.components.find(c=>c.id==='QF1').state.on"), 'A04 defaults to QF1 OFF')
     click(page, page.locator('[data-sim-start]'))
     energized(page, 'MC1', False)
+    press(page, 'PB3', lambda: energized(page, 'MC1', False))
+    toggle_qf(page)
     press(page, 'PB3', lambda: energized(page, 'MC1', True))
     energized(page, 'MC1', True)
     page.wait_for_function("window.wiringLab.getSimulation().result.evaluation.motors.find(m=>m.component==='M1').state==='powered'", polling=100)
+    toggle_qf(page)
+    energized(page, 'MC1', False)
+    energized(page, 'HL4', False)
+    toggle_qf(page)
+    energized(page, 'MC1', False)
+    check(True, 'QF1 cuts coil and lamp, restoration with released ON does not restart')
+    press(page, 'PB3', lambda: energized(page, 'MC1', True))
     check(True, 'start, release, self-hold and three-phase motor')
     press(page, 'PB5', lambda: energized(page, 'MC1', False))
     check(True, 'stop button')
@@ -97,10 +115,20 @@ def run(browser, page):
     energized(page, 'HL3', True)
     energized(page, 'BZ1', True)
     check(True, 'overload, red lamp and buzzer')
+    toggle_qf(page)
+    energized(page, 'HL3', False)
+    energized(page, 'BZ1', False)
+    toggle_qf(page)
+    energized(page, 'HL3', True)
+    energized(page, 'BZ1', True)
+    check(True, 'QF1 also removes and restores the real overload-alarm supply')
+    page.locator('#component-select').select_option('TH1')
     click(page, page.locator('#details button').filter(has_text='RESET'))
     energized(page, 'MC1', False)
     energized(page, 'HL3', False)
     check(True, 'RESET does not restart')
+    assert len(page.evaluate('window.wiringLab.getSimulation().evaluatedCircuit.threePhaseSources')) == 1
+    check(page.evaluate('window.wiringLab.getSimulation().evaluatedCircuit.sources.length') == 0, 'actual solver has one original source, no CONTROL')
     capture(page, 'a04-loaded.png')
     click(page, page.locator('[data-sim-stop]'))
     for _ in range(2):
@@ -128,15 +156,19 @@ def run(browser, page):
     click(page, page.locator('[data-project-cancel]'))
     page.wait_for_function("document.querySelector('[data-project-status]').textContent.includes('取消') && !document.querySelector('[data-project-import]').disabled", polling=100, timeout=30000)
     check(page.evaluate('window.wiringLab.getProject()') == before, 'cancel preserves previous project')
-    load(page, 'independent-drives.project.json')
-    assert page.locator('.equipment-card').count() == 2
+    load(page, 'shared-source-drives.project.json')
+    assert page.locator('.equipment-card').count() == 1
     click(page, page.locator('[data-sim-start]'))
     energized(page, 'coil', True)
     energized(page, 'coil-B', False)
-    click(page, page.locator('[data-source="source-B"]'))
-    assert page.locator('[data-source="source-B"]').is_checked()
+    page.locator('#component-select').select_option('thermal-B')
+    click(page, page.locator('#details button').filter(has_text='RESET'))
     energized(page, 'coil-B', True)
-    check(True, 'independent source switches')
+    page.locator('#component-select').select_option('thermal')
+    click(page, page.locator('#details button').filter(has_text='TEST'))
+    energized(page, 'coil', False)
+    energized(page, 'coil-B', True)
+    check(True, 'one shared source, two independent physical thermal contacts')
     click(page, page.locator('[data-sim-stop]'))
     click(page, page.locator('#reset-project'))
     page.wait_for_function("window.wiringLab.getProject().name==='BOARD 024' && document.querySelector('#component-select').options.length===22", polling=100)
@@ -144,12 +176,12 @@ def run(browser, page):
     page.close()
     # Opening through both HTTP and file:// checks the delivered offline artifact.
     for url, label in [(BASE + '/wiring-panel.html', 'served standalone'),
-                       ((ROOT / 'downloads/wiring-panel-WIRE-R13.html').as_uri(), 'file-protocol standalone')]:
+                       ((ROOT / 'downloads/wiring-panel-WIRE-R14.html').as_uri(), 'file-protocol standalone')]:
         offline = browser.new_page(viewport={'width': 1500, 'height': 1000})
         offline.on('pageerror', lambda error: errors.append(str(error)))
         offline.goto(url, wait_until='load')
         ready(offline)
-        check(offline.evaluate("window.wiringLab.getRevision()==='WIRE-R13' && window.wiringLab.getProject().format==='wiring-panel-project'"), label + ' boot')
+        check(offline.evaluate("window.wiringLab.getRevision()==='WIRE-R14' && window.wiringLab.getProject().format==='wiring-panel-project'"), label + ' boot')
         load(offline, 'custom-panel-less.project.json')
         check(offline.locator('#component-select option').count() == 2, label + ' project import')
         offline.close()
@@ -157,7 +189,7 @@ def run(browser, page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, args=['--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+    browser = playwright.chromium.launch(headless=True, executable_path=os.environ.get('CHROMIUM_EXECUTABLE'), args=['--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
     page = browser.new_page(viewport={'width': 1500, 'height': 1000}, accept_downloads=True)
     page.on('pageerror', lambda error: errors.append(str(error)))
     page.on('console', lambda message: console.append(message.type + ': ' + message.text))

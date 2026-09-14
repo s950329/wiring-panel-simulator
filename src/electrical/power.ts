@@ -1,9 +1,11 @@
-import type {Circuit, Diagnostic, Endpoint, MotorResult} from './contracts.ts';
+import {validLineToLine} from './line-to-line.ts';
+import type {Circuit, Diagnostic, Endpoint, MotorResult, LineToLineCapability, LineToLineEvidence} from './contracts.ts';
 import {compare} from './netlist.ts';
 
 type NetOf = (endpoint: Endpoint) => string;
 export interface SupplyRail { readonly source: string; readonly index: number; readonly net: string; readonly endpoint: Endpoint }
 export interface Supply {
+  readonly lineToLine?: readonly LineToLineCapability[];
   readonly id: string;
   readonly kind: 'two-pole' | 'three-phase';
   readonly profile: string;
@@ -11,7 +13,7 @@ export interface Supply {
 }
 export interface OpaqueLoadEdge { readonly owner: string; readonly ends: readonly [string, string] }
 export const loadKey = (component: string, id: string): string => JSON.stringify([component, id]);
-export function railPairs(supplies: readonly Supply[]): (readonly [string, string])[] {
+export function railPairs(supplies: readonly Pick<Supply, 'rails'>[]): (readonly [string, string])[] {
   return supplies.flatMap(s => s.rails.flatMap((a, i) => s.rails.slice(i + 1).map(b => [a.net, b.net] as const)));
 }
 
@@ -22,6 +24,7 @@ export function describeSupplies(circuit: Circuit, net: NetOf): {supplies: Suppl
     ...(circuit.threePhaseSources ?? []).map(s => ({...s, kind: 'three-phase' as const, poles: s.phases})),
   ].filter(s => s.enabled).sort((a, b) => compare(a.id, b.id));
   const supplies: Supply[] = raw.map(s => ({id: s.id, kind: s.kind, profile: s.profile,
+    ...('lineToLine' in s && validLineToLine(s.lineToLine) && s.lineToLine ? {lineToLine: s.lineToLine} : {}),
     rails: s.poles.map((endpoint, index) => ({source: s.id, index, endpoint, net: net(endpoint)}))}));
   const diagnostics: Diagnostic[] = [];
   for (const s of supplies) if (new Set(s.rails.map(r => r.net)).size < s.rails.length) diagnostics.push({
@@ -80,4 +83,22 @@ export function evaluateMotors(circuit: Circuit, net: NetOf, supplies: readonly 
     return finish('unpowered', supplies.some(s => s.kind === 'three-phase') ? 'open' : 'source-off');
   });
   return {motors, diagnostics};
+}
+
+
+export interface TwoTerminalSupply {
+  readonly id: string;
+  readonly profile: string;
+  readonly rails: readonly [SupplyRail, SupplyRail];
+  readonly evidence?: LineToLineEvidence;
+}
+/** Load matching candidates only. Not sources, not conducting edges, not motor phase rails. */
+export function twoTerminalSupplies(supplies: readonly Supply[]): TwoTerminalSupply[] {
+  return supplies.flatMap((source): TwoTerminalSupply[] => {
+    if (source.kind === 'two-pole') return [{id: source.id, profile: source.profile, rails: [source.rails[0], source.rails[1]]}];
+    return (source.lineToLine ?? []).map(({phaseIndices, profile}) => ({
+      id: source.id, profile, rails: [source.rails[phaseIndices[0]], source.rails[phaseIndices[1]]],
+      evidence: {kind: 'line-to-line', sourceId: source.id, phaseIndices: [...phaseIndices]},
+    }));
+  });
 }

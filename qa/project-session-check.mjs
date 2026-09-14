@@ -21,10 +21,10 @@ test('legacy R8-R12 projects convert trusted placements, settings and endpoints 
  for(const c of old.components){delete c.terminals;delete c.definition;delete c.transform;}
  for(const revision of ['WIRE-R8','WIRE-R9','WIRE-R10','WIRE-R11','WIRE-R12']){
   const result=read({...old,revision});assert.equal(result.convertedLegacy,true);const p=result.project;
-  assert.equal(p.configuration.components.length,25);assert.deepEqual(p.connections,[{from:ep('QF1','T1'),to:ep('MC1','1L1')}]);
+  assert.equal(p.configuration.components.length,24);assert.deepEqual(p.connections,[{from:ep('QF1','T1'),to:ep('MC1','1L1')}]);
   assert.deepEqual(p.configuration.components.find(c=>c.id==='TH1').parameters,{current:16.5});
   assert.deepEqual(p.configuration.components.find(c=>c.id==='PB3').state,undefined);
-  assert.equal(p.configuration.components.find(c=>c.id==='CONTROL').parameters.enabled,false);
+  assert.equal(p.configuration.components.find(c=>c.id==='CONTROL'),undefined);assert.match(result.conversionNotes.join(' '),/CONTROL/);assert.equal(p.configuration.components.find(c=>c.id==='MAIN').parameters,undefined);
   assert.equal(p.configuration.components.find(c=>c.id==='QF1').state.on,true);
  }
 });
@@ -64,7 +64,7 @@ test('cancelling during routing preserves original project and disposes the stag
  assert.equal(session.active,old);assert.equal(old.disposed,false);assert.equal(old.locked,false);assert.equal(session.busy,false);session.dispose();
 });
 test('busy and energized destinations reject replacement; missing sources are not recreated implicitly',async()=>{
- const session=make();session.active.simulation.start();await assert.rejects(session.load(JSON.stringify(minimalProject())),/停止/);session.active.simulation.stop();
+ const session=make();session.active.simulation.start();await assert.rejects(session.load(JSON.stringify(minimalProject())),/返回配線/);session.active.simulation.stop();
  let finish;const pending=session.load(()=>new Promise(r=>finish=r));await assert.rejects(session.load('{}'),/匯入/);session.cancel();await assert.rejects(pending,/取消/);finish('{}');
  const p=minimalProject();p.configuration.components=[];await session.load(JSON.stringify(p));assert.equal(session.active.components.size,0);assert.deepEqual(session.active.simulation.equipment,[]);session.dispose();
 });

@@ -1,7 +1,7 @@
 import type {Circuit, Diagnostic, Endpoint, Evaluation, EvaluationState, LoadResult} from './contracts.ts';
 import {buildNetlist, compare, endpointKey, sortedDiagnostics} from './netlist.ts';
 import {loadPaths} from './load-paths.ts';
-import {describeSupplies, evaluateMotors, loadKey, motorLoadEdges, railPairs} from './power.ts';
+import {describeSupplies, evaluateMotors, loadKey, motorLoadEdges, railPairs, twoTerminalSupplies} from './power.ts';
 
 /** One simultaneous evaluation. Stateful feedback and convergence belong to Phase 2. */
 export function evaluateCircuit(circuit: Circuit, state: EvaluationState = {}): Evaluation {
@@ -10,7 +10,7 @@ export function evaluateCircuit(circuit: Circuit, state: EvaluationState = {}): 
   const net = (e: Endpoint): string => byEndpoint.get(endpointKey(e)) ?? endpointKey(e);
   const invalid = diagnostics.some(d => d.severity === 'error');
   const {supplies, diagnostics: sourceDiagnostics} = describeSupplies(circuit, net);
-  const live = supplies.filter(s => s.kind === 'two-pole');
+  const live = twoTerminalSupplies(supplies);
   const add = (code: Diagnostic['code'], severity: Diagnostic['severity'], subject: string, endpoints: readonly Endpoint[]) =>
     diagnostics.push({code, severity, subject, endpoints});
   const fault = !invalid && sourceDiagnostics.length > 0;
@@ -39,7 +39,8 @@ export function evaluateCircuit(circuit: Circuit, state: EvaluationState = {}): 
         return finish('unknown', 'incompatible-supply', direct.map(s => s.id));
       }
       add('RATING_UNVERIFIED', 'warning', `${component}/${load.id}`, [a, b]);
-      return finish('energized', 'supply', direct.map(s => s.id));
+      return {...finish('energized', 'supply', [...new Set(direct.map(s => s.id))]),
+        ...(direct[0].evidence ? {supplyEvidence: direct[0].evidence} : {})};
     }
     if (paths.has(i)) {
       add('UNSUPPORTED_SERIES', 'error', `${component}/${load.id}`, [a, b]);

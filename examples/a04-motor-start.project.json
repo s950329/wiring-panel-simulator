@@ -1,7 +1,7 @@
 {
   "format": "wiring-panel-project",
   "schemaVersion": 1,
-  "name": "A04 馬達啟動控制",
+  "name": "A04 馬達啟動控制｜單一電源",
   "configuration": {
     "units": {
       "position": "scene-units",
@@ -146,7 +146,7 @@
           "rotationY": -90
         },
         "state": {
-          "on": true
+          "on": false
         }
       },
       {
@@ -449,22 +449,10 @@
         }
       },
       {
-        "id": "CONTROL",
-        "definitionId": "teaching-source",
-        "definitionVersion": 1,
-        "placement": null,
-        "parameters": {
-          "enabled": true
-        }
-      },
-      {
         "id": "MAIN",
-        "definitionId": "teaching-three-phase-source",
+        "definitionId": "teaching-ac220-three-phase-source",
         "definitionVersion": 1,
-        "placement": null,
-        "parameters": {
-          "enabled": true
-        }
+        "placement": null
       },
       {
         "id": "M1",
@@ -751,8 +739,8 @@
     },
     {
       "from": {
-        "component": "CONTROL",
-        "terminal": "L"
+        "component": "QF1",
+        "terminal": "T1"
       },
       "to": {
         "component": "FU1",
@@ -761,8 +749,8 @@
     },
     {
       "from": {
-        "component": "CONTROL",
-        "terminal": "N"
+        "component": "QF1",
+        "terminal": "T3"
       },
       "to": {
         "component": "FU1",

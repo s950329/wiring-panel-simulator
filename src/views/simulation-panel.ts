@@ -1,4 +1,4 @@
-import type {SimulationController} from '../application/simulation.ts';
+import type {SimulationController,SimulationSnapshot} from '../application/simulation.ts';
 import type {Endpoint} from '../electrical/contracts.ts';
 import {explainSimulation} from '../electrical/explanation.ts';
 
@@ -9,30 +9,22 @@ export interface SimulationPanelHandlers {
   locate(endpoint: Endpoint, wireIds: readonly string[]): void;
   isBusy(): boolean;
 }
-/** Controls persist across updates so a pressed button or source switch keeps focus. */
-export function createSimulationPanel(container: HTMLElement, simulation: SimulationController, handlers: SimulationPanelHandlers) {
+/** Controls persist across updates; testing mode is not an independent supply. */
+type SimulationDisplay = Pick<SimulationController, 'mode' | 'equipment'> & {snapshot(): Pick<SimulationSnapshot, 'mode' | 'result' | 'evaluatedCircuit' | 'fixedWires'>};
+export function createSimulationPanel(container: HTMLElement, simulation: SimulationDisplay, handlers: SimulationPanelHandlers) {
   const panel = document.createElement('section'); panel.className = 'simulation-panel'; panel.setAttribute('aria-label', '電路模擬');
   panel.innerHTML = `<div class="section-head"><h2>電路模擬</h2><span class="chip">教學配置</span></div>
     <p class="simulation-state" role="status" aria-live="polite"></p>
-    <div class="simulation-actions"><button data-sim-start>送電模擬</button><button data-sim-stop class="secondary">停止模擬</button></div>
-    <div class="supply-switches"></div>
+    <div class="simulation-actions"><button data-sim-start>開始測試</button><button data-sim-stop class="secondary">返回配線</button></div>
     <details class="external-connections" open><summary>外接電源與馬達端子</summary><div class="equipment-cards"></div></details>
     <div class="simulation-results" aria-label="負載供電狀態" aria-live="polite"></div>
     <div class="simulation-explanations" aria-label="供電原因與端子定位"></div>
-    <p class="simulation-note">控制與主電源彼此獨立；亮燈或 MC 吸合不代表馬達已取得三相供電。指示燈亮光位於操作板正面，請收合操作板查看。外接卡片是教學設備。</p>
+    <p class="simulation-note">本盤只有一組外接電源，按正確接線由總開關控制下游供斷電；MC 狀態綠燈不保證馬達三相完整。指示燈亮光位於操作板正面，請收合操作板查看。外接卡片是教學設備。</p>
     <details class="assembly-links"><summary>固定組裝連接</summary><div></div></details>`;
   container.prepend(panel);
   const find = <T extends Element>(selector: string): T => {const e = panel.querySelector<T>(selector); if (!e) throw new Error(`缺少介面 ${selector}`); return e;};
   const start = find<HTMLButtonElement>('[data-sim-start]'), stop = find<HTMLButtonElement>('[data-sim-stop]');
   start.onclick = handlers.start; stop.onclick = handlers.stop;
-  for (const equipment of simulation.equipment) {
-    const kind=simulation.sourceKind(equipment.id); if(!kind)continue;
-    const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';
-    input.dataset.source=equipment.id;input.dataset.supply=kind;
-    const name=document.createElement('span');name.textContent=`${equipment.id} · ${equipment.label}`;
-    input.onchange=()=>{if(!handlers.isBusy())simulation.setSource(equipment.id,input.checked);else render();};
-    label.append(input,name);find('.supply-switches').append(label);
-  }
   for (const equipment of simulation.equipment) {
     const card = document.createElement('div'); card.className = 'equipment-card'; card.dataset.equipment = equipment.id;
     const heading = document.createElement('strong'); heading.textContent = `${equipment.id} · ${equipment.label}`;
@@ -54,12 +46,9 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
     const s = simulation.snapshot(); panel.dataset.simulationMode = s.mode;
     if (previousMode !== s.mode) find<HTMLDetailsElement>('.external-connections').open = s.mode === 'off';
     previousMode = s.mode;
-    find('.simulation-state').textContent = s.mode === 'off' ? '未送電 · 可編輯接線' : s.mode === 'halted' ?
-      '已暫停 · 停止模擬後檢查接線，再重新送電' : '模擬中 · 可操作按鈕與開關';
+    find('.simulation-state').textContent = s.mode === 'off' ? '配線模式 · 模擬未執行' : s.mode === 'halted' ?
+      '已暫停 · 返回配線檢查後再開始測試' : '測試模式 · 請用盤上總開關供電／斷電';
     start.disabled = s.mode !== 'off' || handlers.isBusy(); stop.disabled = s.mode === 'off'||handlers.isBusy();
-    for (const input of panel.querySelectorAll<HTMLInputElement>('[data-supply]')) {
-      input.checked=simulation.sourceEnabled(input.dataset.source!);input.disabled=s.mode==='halted'||handlers.isBusy();
-    }
     for (const button of panel.querySelectorAll<HTMLButtonElement>('[data-external-terminal]')) button.disabled = s.mode !== 'off'||handlers.isBusy();
     const results = find('.simulation-results'); results.replaceChildren();
     if (s.result?.status === 'stable') {
@@ -72,7 +61,7 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
         row.append(id, status); results.append(row);
       }
     } else {
-      const p = document.createElement('p'); p.textContent = s.mode === 'halted' ? '本次結果無法成立，線圈及負載輸出已清除。' : '接好控制回路與主電路，再按「送電模擬」。'; results.append(p);
+      const p = document.createElement('p'); p.textContent = s.mode === 'halted' ? '本次結果無法成立，線圈及負載輸出已清除。' : '接好進線與盤內回路，再按「開始測試」；模式只管理運算，不是另一顆電源開關。'; results.append(p);
     }
     const explanations = find('.simulation-explanations');
     const expanded = new Set([...explanations.querySelectorAll<HTMLDetailsElement>('details[open]')].map(e => e.dataset.explanation));

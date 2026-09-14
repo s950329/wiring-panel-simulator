@@ -7,7 +7,7 @@ import {fixedAssemblyWires} from './assemblies.ts';
 import {captureProjectInputs} from './catalog.ts';
 import {projectEquipment} from './equipment.ts';
 import {disposeProjectTree} from './resources.ts';
-import {SimulationController} from '../application/simulation.ts';
+import {ProjectSimulationController} from './simulation.ts';
 import {WiringController} from '../wiring/controller.js';
 
 /** Owns one configuration and its actual connections; reconstruction appends through connect(). */
@@ -15,7 +15,7 @@ export class ProjectRuntime {
   readonly project:ProjectDocument;
   readonly model:ReturnType<typeof buildProjectModel>;
   readonly routing:WiringController;
-  readonly simulation:SimulationController;
+  readonly simulation:ProjectSimulationController;
   readonly front:Set<string>;
   locked=false; disposed=false; panelOpen:boolean;
   #order:Wire[]=[];
@@ -24,13 +24,13 @@ export class ProjectRuntime {
     this.panelOpen=this.project.configuration.operationPanel?.state.open??false;
     this.front=new Set([...this.components.values()].filter(c=>c.root.parent===this.flap).map(c=>c.id));
     this.routing=new WiringController(this.world,this.components,{canEdit:()=>!this.disposed&&!this.locked&&this.simulation.canEdit});
-    this.simulation=new SimulationController(this.components,()=>this.routing.wires,()=>{},
+    this.simulation=new ProjectSimulationController(this.components,()=>this.routing.wires,
       {equipment:projectEquipment(this.project.configuration),fixedWires:fixedAssemblyWires(this.project.configuration),canInteract:()=>!this.locked&&!this.disposed});
   }
   get world(){return this.model.world;}
   get components(){return this.model.components;}
   get flap(){return this.model.flap;}
-  assertEditable():void{if(this.disposed)throw new Error('專案已釋放 disposed');if(this.locked||!this.simulation.canEdit)throw new Error('請等匯入完成並停止模擬再修改接線');}
+  assertEditable():void{if(this.disposed)throw new Error('專案已釋放 disposed');if(this.locked||!this.simulation.canEdit)throw new Error('請等匯入完成並返回配線模式再修改接線');}
   connect(from:Endpoint,to:Endpoint){
     this.assertEditable();if(this.#order.length>=PROJECT_LIMITS.connections)throw new Error('接線數量超過 512');
     const circuit=this.simulation.circuit(),valid=(e:Endpoint)=>circuit.components.some(c=>c.id===e.component&&c.terminals.includes(e.terminal));
@@ -62,7 +62,7 @@ export class ProjectRuntime {
     out.configuration.components=out.configuration.components.map(spec=>{
       const c=this.components.get(spec.id);const {state:_state,parameters:_parameters,...identity}=spec;
       if(c)return {...identity,...captureProjectInputs(c)};
-      return {...identity,...(this.simulation.sourceKind(spec.id)?{parameters:{enabled:this.simulation.sourceEnabled(spec.id)}}:{})};
+      return identity;
     });return out;
   }
   dispose():void{

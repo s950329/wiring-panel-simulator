@@ -1,7 +1,7 @@
 {
   "format": "wiring-panel-project",
   "schemaVersion": 1,
-  "name": "雙組接觸器與獨立電源",
+  "name": "共用單一來源｜兩組接觸器與過載接點",
   "configuration": {
     "units": {
       "position": "scene-units",
@@ -15,7 +15,20 @@
     },
     "operationPanel": null,
     "rails": [],
-    "ducts": [],
+    "ducts": [
+      {
+        "id": "shared-channel",
+        "mountId": "base",
+        "position": [
+          520,
+          0.5,
+          400
+        ],
+        "rotationY": 0,
+        "length": 720,
+        "width": 43
+      }
+    ],
     "components": [
       {
         "id": "coil",
@@ -90,25 +103,30 @@
           "current": 15
         },
         "state": {
-          "trip": false
+          "trip": true
         }
       },
       {
         "id": "source",
-        "definitionId": "teaching-source",
+        "definitionId": "teaching-ac220-three-phase-source",
         "definitionVersion": 1,
-        "placement": null,
-        "parameters": {
-          "enabled": true
-        }
+        "placement": null
       },
       {
-        "id": "source-B",
-        "definitionId": "teaching-source",
+        "id": "master",
+        "definitionId": "shihlin-t20",
         "definitionVersion": 1,
-        "placement": null,
-        "parameters": {
-          "enabled": false
+        "placement": {
+          "mountId": "base",
+          "position": [
+            910,
+            7,
+            100
+          ],
+          "rotationY": -90
+        },
+        "state": {
+          "on": true
         }
       }
     ],
@@ -132,27 +150,67 @@
     {
       "from": {
         "component": "source",
-        "terminal": "L"
+        "terminal": "L1"
       },
       "to": {
-        "component": "coil",
-        "terminal": "A1"
+        "component": "master",
+        "terminal": "L1"
       }
     },
     {
       "from": {
         "component": "source",
-        "terminal": "N"
+        "terminal": "L2"
       },
       "to": {
-        "component": "coil",
-        "terminal": "A2"
+        "component": "master",
+        "terminal": "L2"
       }
     },
     {
       "from": {
-        "component": "source-B",
-        "terminal": "L"
+        "component": "source",
+        "terminal": "L3"
+      },
+      "to": {
+        "component": "master",
+        "terminal": "L3"
+      }
+    },
+    {
+      "from": {
+        "component": "master",
+        "terminal": "T1"
+      },
+      "to": {
+        "component": "coil",
+        "terminal": "A1"
+      }
+    },
+    {
+      "from": {
+        "component": "coil",
+        "terminal": "A2"
+      },
+      "to": {
+        "component": "thermal",
+        "terminal": "TB"
+      }
+    },
+    {
+      "from": {
+        "component": "thermal",
+        "terminal": "TC"
+      },
+      "to": {
+        "component": "master",
+        "terminal": "T3"
+      }
+    },
+    {
+      "from": {
+        "component": "master",
+        "terminal": "T1"
       },
       "to": {
         "component": "coil-B",
@@ -161,12 +219,22 @@
     },
     {
       "from": {
-        "component": "source-B",
-        "terminal": "N"
-      },
-      "to": {
         "component": "coil-B",
         "terminal": "A2"
+      },
+      "to": {
+        "component": "thermal-B",
+        "terminal": "TB"
+      }
+    },
+    {
+      "from": {
+        "component": "thermal-B",
+        "terminal": "TC"
+      },
+      "to": {
+        "component": "master",
+        "terminal": "T3"
       }
     }
   ]

@@ -8,11 +8,11 @@ const cancelled=()=>new Error('專案匯入已取消');
 const check=(signal?:AbortSignal)=>{if(signal?.aborted)throw cancelled();};
 const yieldTask=()=>new Promise<void>(resolve=>setTimeout(resolve,0));
 /** Independent construction. Only the caller can publish this runtime. */
-export async function buildProject(source:string,options:BuildOptions={}):Promise<{runtime:ProjectRuntime;convertedLegacy:boolean}>{
+export async function buildProject(source:string,options:BuildOptions={}):Promise<{runtime:ProjectRuntime;convertedLegacy:boolean;conversionNotes:string[]}>{
  const {signal,onProgress}=options;let runtime:ProjectRuntime|undefined;
  const report=(phase:ProjectProgress['phase'],completed:number,total:number,detail:string)=>{check(signal);onProgress?.({phase,completed,total,detail});check(signal);};
  try{
-  report('validate',0,0,'檢查配置與端子');const {project,convertedLegacy}=readProject(source);await yieldTask();check(signal);
+  report('validate',0,0,'檢查配置與端子');const {project,convertedLegacy,conversionNotes}=readProject(source);await yieldTask();check(signal);
   report('build',0,project.connections.length,'建立暫存盤面');runtime=createProjectRuntime(project);
   const targetOpen=runtime.panelOpen;if(runtime.flap){runtime.flap.rotation.x=Math.PI;runtime.panelOpen=true;runtime.world.updateMatrixWorld(true);}
   const context=runtime.world.userData.routingContext as RoutingContext;context.checkpoint=()=>check(signal);
@@ -24,8 +24,8 @@ export async function buildProject(source:string,options:BuildOptions={}):Promis
   }
   report('panel',project.connections.length,project.connections.length,'驗證操作板最終姿態');await yieldTask();check(signal);
   if(runtime.flap&&!targetOpen)runtime.movePanel(false);
-  delete context.checkpoint;report('ready',project.connections.length,project.connections.length,'重建完成，未送電');await yieldTask();check(signal);
-  return{runtime,convertedLegacy};
+  delete context.checkpoint;report('ready',project.connections.length,project.connections.length,'重建完成，模擬未執行');await yieldTask();check(signal);
+  return{runtime,convertedLegacy,conversionNotes};
  }catch(error){runtime?.dispose();throw error;}
 }
 function abortable<T>(work:Promise<T>,signal:AbortSignal):Promise<T>{
@@ -41,7 +41,7 @@ export class ProjectSession{
  constructor(runtime:ProjectRuntime){this.#active=runtime;}
  get active():ProjectRuntime{return this.#active;}
  get busy():boolean{return this.#job!==null;}
- async load(source:string|(()=>Promise<string>),options:BuildOptions={}):Promise<{runtime:ProjectRuntime;convertedLegacy:boolean}>{
+ async load(source:string|(()=>Promise<string>),options:BuildOptions={}):Promise<{runtime:ProjectRuntime;convertedLegacy:boolean;conversionNotes:string[]}>{
   if(this.#disposed)throw new Error('專案工作階段已釋放');
   if(this.#job)throw new Error('已有專案正在匯入');
   this.#active.assertEditable();const owner=this.#active,controller=new AbortController(),token=++this.#generation;

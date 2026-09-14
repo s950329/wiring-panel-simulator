@@ -1,7 +1,8 @@
-import type {Circuit, Component, Contact, ElectricalModel, InputDefinition, Link, Load} from './contracts.ts';
+import type {Circuit, Component, Contact, ElectricalModel, InputDefinition, Link, Load, ThreePhaseSource} from './contracts.ts';
 
 export const TEACHING_PROFILE = 'teaching-control-v1';
 export const THREE_PHASE_PROFILE = 'teaching-three-phase-v1';
+export const AC220_SOURCE_DEFINITION = 'teaching-ac220-three-phase-source';
 const booleanInput = (initial: boolean): InputDefinition => ({initial, values: [false, true]});
 const link = (id: string, a: string, b: string): Link => ({id, a, b});
 const inputContact = (id: string, a: string, b: string, key: string, equals: boolean | 0 | 1 | 2): Contact =>
@@ -24,6 +25,7 @@ const sides = ['L-B-U', 'L-B-L', 'L-F-U', 'L-F-L', 'R-B-U', 'R-B-L', 'R-F-U', 'R
 const definitions: Record<string, Definition> = {
   'teaching-source': {terminals: ['L', 'N'], model: model()},
   'teaching-three-phase-source': {terminals: ['L1', 'L2', 'L3'], model: model()},
+  [AC220_SOURCE_DEFINITION]: {terminals: ['L1', 'L2', 'L3'], model: model()},
   'teaching-motor': {terminals: ['U', 'V', 'W'], model: model({
     motors: [{id: 'motor', terminals: ['U', 'V', 'W'], profile: THREE_PHASE_PROFILE}]})},
   'shihlin-sp16': {terminals: ['1L1', '3L2', '5L3', '2T1', '4T2', '6T3', ...sides, 'A1', 'A2'],
@@ -77,4 +79,18 @@ export function minimalControlCircuit(): Circuit {
     sources: [{id: 'CONTROL', a: {component: 'SUPPLY', terminal: 'L'}, b: {component: 'SUPPLY', terminal: 'N'},
       profile: TEACHING_PROFILE, enabled: true}],
   };
+}
+
+
+/** Built-in declaration, not a voltage inferred from an arbitrary source name or profile. */
+export function createTeachingPhaseSource(id: string, definitionId: string, enabled: boolean): ThreePhaseSource {
+  if (!['teaching-three-phase-source', AC220_SOURCE_DEFINITION].includes(definitionId))
+    throw new Error(`Unsupported three-phase source definition: ${definitionId}`);
+  return {id: `${id}-SUPPLY`, phases: [{component: id, terminal: 'L1'}, {component: id, terminal: 'L2'}, {component: id, terminal: 'L3'}],
+    profile: THREE_PHASE_PROFILE, enabled,
+    ...(definitionId === AC220_SOURCE_DEFINITION ? {lineToLine: [
+      {phaseIndices: [0, 1] as const, profile: TEACHING_PROFILE},
+      {phaseIndices: [0, 2] as const, profile: TEACHING_PROFILE},
+      {phaseIndices: [1, 2] as const, profile: TEACHING_PROFILE},
+    ]} : {})};
 }

@@ -31,10 +31,10 @@ test('reordering configured channels does not change the chosen native path',()=
   assert.deepEqual(other,w);a.dispose();b.dispose();
 });
 test('no-duct cabinet connection fails without publishing a wire; external connections still work',()=>{
-  const p=minimalProject();p.configuration.ducts=[];p.configuration.components.push({id:'feed',definitionId:'teaching-source',definitionVersion:1,placement:null});
+  const p=minimalProject();p.configuration.ducts=[];p.configuration.components.push({id:'feed',definitionId:'teaching-ac220-three-phase-source',definitionVersion:1,placement:null});
   const m=createProjectRuntime(p);assert.throws(()=>m.connect(ep('breaker','T1'),ep('coil','1L1')),/線槽/);
   assert.equal(m.routing.wires.length,0);assert.equal(m.exportProject().connections.length,0);
-  m.connect(ep('feed','L'),ep('coil','A1'));assert.equal(m.exportProject().connections.length,1);m.dispose();
+  m.connect(ep('feed','L1'),ep('coil','A1'));assert.equal(m.exportProject().connections.length,1);m.dispose();
 });
 test('native routing checkpoints cancel before publishing any geometry',()=>{
   const m=createProjectRuntime(minimalProject());assert.ok(m.world.userData.routingContext);

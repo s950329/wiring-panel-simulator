@@ -42,8 +42,18 @@ export interface Source {
   readonly profile: string;
   readonly enabled: boolean;
 }
-/** Three named phase poles of ONE source; no neutral or implicit two-pole supply. */
+export interface LineToLineCapability {
+  readonly phaseIndices: readonly [number, number];
+  readonly profile: string;
+}
+export interface LineToLineEvidence {
+  readonly kind: 'line-to-line';
+  readonly sourceId: string;
+  readonly phaseIndices: readonly [number, number];
+}
+/** Three named phase poles of ONE source; two-terminal capability must be declared explicitly. */
 export interface ThreePhaseSource {
+  readonly lineToLine?: readonly LineToLineCapability[];
   readonly id: string;
   readonly phases: readonly [Endpoint, Endpoint, Endpoint];
   readonly profile: string;
@@ -85,6 +95,7 @@ export interface Netlist {
   readonly diagnostics: readonly Diagnostic[];
 }
 export interface LoadResult {
+  readonly supplyEvidence?: LineToLineEvidence;
   readonly component: string;
   readonly id: string;
   readonly kind: Load['kind'];

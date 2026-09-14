@@ -85,9 +85,13 @@ export function explainSimulation(circuit: Circuit, result: SimulationResult | n
     const endpoints = [definition.a, definition.b].map(terminal => ({component: load.component, terminal}));
     const keys = new Set(endpoints.map(endpointKey));
     if (load.kind !== 'coil' && !circuit.wires.some(w => keys.has(endpointKey(w.from)) || keys.has(endpointKey(w.to)))) continue;
-    const powered = load.state === 'energized', off = !circuit.sources.some(s => s.enabled && s.profile === definition.profile);
+    const powered = load.state === 'energized', off = !circuit.sources.some(s => s.enabled && s.profile === definition.profile) &&
+      !(circuit.threePhaseSources ?? []).some(s => s.enabled && s.lineToLine?.some(p => p.profile === definition.profile));
+    const phaseEvidence = load.supplyEvidence;
+    const phaseSource = phaseEvidence && circuit.threePhaseSources?.find(s => s.id === phaseEvidence.sourceId);
+    const phaseNames = phaseSource && phaseEvidence ? phaseEvidence.phaseIndices.map(i => {const e = phaseSource.phases[i]; return `${e.component}:${e.terminal}`;}).join(' ↔ ') : '';
     const title = powered ? load.kind === 'coil' ? '線圈吸合' : '負載已供電' : off ? '電源未開啟' : load.kind === 'coil' ? '線圈未吸合' : '負載未供電';
-    const detail = powered ? '兩端經導線與閉合接點，連到同一相符教學電源的不同電位。' :
+    const detail = powered ? phaseNames ? `兩端經實際導線與閉合接點，由同一來源 ${phaseNames} 相間供電；不是另一組控制電源。` : '兩端經導線與閉合接點，連到同一相符教學電源的不同電位。' :
       load.reason === 'same-potential' ? '負載兩端連到同一電位，供電不成立。' : off ? '相符的教學控制電源尚未開啟。' :
       `尚未形成接到相符電源兩端的完整回路；可逐端查看來源，以及相鄰的開路接點。${load.kind === 'coil' ? ' 若啟動時可吸合、放開便釋放，請檢查保持支路。' : ''}`;
     explanations.push({id: `load:${load.component}:${load.id}`, severity: powered ? 'info' : 'warning',

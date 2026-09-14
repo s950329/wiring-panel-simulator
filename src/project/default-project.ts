@@ -452,22 +452,10 @@ const project: ProjectDocument = {
         }
       },
       {
-        "id": "CONTROL",
-        "definitionId": "teaching-source",
-        "definitionVersion": 1,
-        "placement": null,
-        "parameters": {
-          "enabled": true
-        }
-      },
-      {
         "id": "MAIN",
-        "definitionId": "teaching-three-phase-source",
+        "definitionId": "teaching-ac220-three-phase-source",
         "definitionVersion": 1,
-        "placement": null,
-        "parameters": {
-          "enabled": true
-        }
+        "placement": null
       },
       {
         "id": "M1",
