@@ -1,0 +1,46 @@
+name: Verify configurable wiring projects
+on:
+  push:
+    branches: [main, feature/project-format-v1]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test | tee unit-tests.log
+      - run: npm run build
+      - name: Browser test dependencies
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Production and standalone browser acceptance
+        run: |
+          python -m http.server 4173 --directory dist > /tmp/wiring-http.log 2>&1 &
+          python qa/project-browser-check.py http://127.0.0.1:4173
+      - name: Package verified source
+        run: |
+          git archive --format=zip --output=wiring-panel-WIRE-R13-source.zip HEAD
+          git rev-parse HEAD > verified-commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: project-format-verification
+          path: |
+            qa-results/
+            dist/
+            downloads/
+            unit-tests.log
+            verified-commit.txt
+            wiring-panel-WIRE-R13-source.zip
+          retention-days: 7
