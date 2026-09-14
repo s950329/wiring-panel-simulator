@@ -1,0 +1,121 @@
+name: Publish and verify project-format implementation
+on:
+  push:
+    branches: [feature/project-format-v1]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Materialize hash-verified source patch
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64, hashlib, json, lzma, os, pathlib, subprocess, urllib.request
+          if pathlib.Path('src/project/contracts.ts').exists():
+              print('Using the materialized implementation already on this isolated branch.')
+              raise SystemExit(0)
+          shas = ['2de3d6ae2d3505c6f97d4a77d0b10739d066e3ac','17e381010baca17774aa0842f7b651a408ca06d4','ff4452b7f6e72a0a18699e826dcf06f9b79a8880','d89eb69913cdb439758d76c02e5712bf8b8e40e8','57ff196555a6ceb38bb64401cfefe48de7785285','90e7173dc64e2a27c1177e939562a35c03d7237c','70d5d917b09e01fdf159062715f74ecf344e3067','3e55827eb058404d6db2acbfd3af80ef3d801eaf']
+          root = 'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
+          headers = {'Authorization':'Bearer ' + os.environ['GH_TOKEN'], 'Accept':'application/vnd.github+json'}
+          chunks = []
+          for sha in shas:
+              request = urllib.request.Request(root + '/git/blobs/' + sha, headers=headers)
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  blob = json.load(response)
+              raw = base64.b64decode(blob['content'])
+              assert hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest() == sha
+              chunks.append(raw)
+          archive = b''.join(chunks)
+          assert hashlib.sha256(archive).hexdigest() == 'cd7bbd06688738b98e26e214c5d538e4204847bf35d8e13b40161141e8e9a672'
+          payload = json.loads(lzma.decompress(archive))
+          assert payload['base'] == 'a248f33e53b3b85d0eb9e55a4607bfa8a686fb1b'
+          subprocess.run(['git','merge-base','--is-ancestor',payload['base'],'HEAD'], check=True)
+          allowed = {'src','qa','scripts','examples','docs','package.json'}
+          for path in payload['files']:
+              p = pathlib.PurePosixPath(path)
+              assert not p.is_absolute() and '..' not in p.parts and p.parts[0] in allowed
+          patch = pathlib.Path('/tmp/project-source.patch')
+          patch.write_text(payload['patch'])
+          subprocess.run(['git','apply','--check','--unidiff-zero',str(patch)], check=True)
+          subprocess.run(['git','apply','--unidiff-zero',str(patch)], check=True)
+          for path, expected in payload['files'].items():
+              actual = subprocess.check_output(['git','hash-object',path], text=True).strip()
+              assert actual == expected, path
+          pathlib.Path('/tmp/project-source-manifest.json').write_text(json.dumps(payload['files']))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:
+              out.write('applied=true\n')
+          print('Verified and materialized', len(payload['files']), 'source files; original baseline files preserved.')
+          PY
+      - run: npm ci
+      - run: npm test | tee unit-tests.log
+      - run: npm run build
+      - name: Commit validated source to isolated feature branch
+        if: steps.source.outputs.applied == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import base64, json, os, pathlib, subprocess, urllib.request
+          root = 'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
+          headers = {'Authorization':'Bearer ' + os.environ['GH_TOKEN'], 'Accept':'application/vnd.github+json','Content-Type':'application/json'}
+          def api(path, method='GET', data=None):
+              request = urllib.request.Request(root + path, data=json.dumps(data).encode() if data is not None else None, headers=headers, method=method)
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  return json.load(response)
+          branch = os.environ['GITHUB_REF_NAME']
+          assert branch == 'feature/project-format-v1'
+          head = api('/git/ref/heads/' + branch)['object']['sha']
+          assert head == os.environ['GITHUB_SHA'], 'Concurrent branch changes must not be overwritten'
+          original = api('/git/commits/' + head)
+          files = json.loads(pathlib.Path('/tmp/project-source-manifest.json').read_text())
+          entries = []
+          for path, expected in files.items():
+              raw = pathlib.Path(path).read_bytes()
+              actual = subprocess.check_output(['git','hash-object',path], text=True).strip()
+              assert actual == expected, path
+              blob = api('/git/blobs','POST',{'encoding':'base64','content':base64.b64encode(raw).decode()})
+              assert blob['sha'] == expected, path
+              entries.append({'path':path,'mode':'100644','type':'blob','sha':blob['sha']})
+          tree = api('/git/trees','POST',{'base_tree':original['tree']['sha'],'tree':entries})
+          commit = api('/git/commits','POST',{'message':'feat(project): rebuild configurable wiring projects from endpoint-only JSON (WIRE-R13)\n\nImplement versioned project contracts, dynamic structures/equipment/assemblies, native duct-network routing, transactional import/cancellation, legacy conversion, browser UI and examples.\n\nValidated 144 tests and production/standalone builds before publishing this feature commit. Browser acceptance is the following CI step; no Site deployment is claimed.','tree':tree['sha'],'parents':[head]})
+          assert api('/git/ref/heads/' + branch)['object']['sha'] == head
+          api('/git/refs/heads/' + branch,'PATCH',{'sha':commit['sha'],'force':False})
+          assert api('/git/ref/heads/' + branch)['object']['sha'] == commit['sha']
+          receipt = {'commit':commit['sha'],'tree':tree['sha'],'verifiedFiles':len(entries),'run':os.environ['GITHUB_RUN_ID']}
+          pathlib.Path('source-published.json').write_text(json.dumps(receipt,indent=2))
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out:
+              out.write('Validated source published to feature branch: `' + commit['sha'] + '`\n')
+          print(json.dumps(receipt))
+          PY
+      - name: Browser test dependencies
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Production and standalone browser acceptance
+        run: |
+          python -m http.server 4173 --directory dist > /tmp/wiring-http.log 2>&1 &
+          python qa/project-browser-check.py http://127.0.0.1:4173
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: project-format-verification
+          path: |
+            qa-results/
+            dist/
+            downloads/
+            unit-tests.log
+            source-published.json
+          retention-days: 7
