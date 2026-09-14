@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run offline && vite build",
-    "test": "npm run typecheck && node --import tsx --test qa/geometry-check.mjs qa/mc1-correction.mjs qa/wiring-check.mjs qa/component-check.mjs qa/operation-panel-check.mjs qa/front-controls-check.mjs qa/electrical-check.mjs qa/electrical-model-check.mjs qa/electrical-simulator-check.mjs qa/electrical-power-check.mjs qa/electrical-dol-check.mjs qa/simulation-application-check.mjs qa/simulation-routing-check.mjs qa/wiring-panel-events-check.mjs qa/electrical-explanation-check.mjs qa/panel-route-retry-check.mjs qa/board-snapshot-check.mjs qa/wire-highlight-check.mjs qa/board-import-check.mjs qa/snapshot-import-events-check.mjs qa/lamp-contrast-check.mjs qa/snapshot-reroute-check.mjs",
+    "test": "npm run typecheck && node --import tsx --test qa/geometry-check.mjs qa/mc1-correction.mjs qa/wiring-check.mjs qa/component-check.mjs qa/operation-panel-check.mjs qa/front-controls-check.mjs qa/electrical-check.mjs qa/electrical-model-check.mjs qa/electrical-simulator-check.mjs qa/electrical-power-check.mjs qa/electrical-dol-check.mjs qa/simulation-application-check.mjs qa/simulation-routing-check.mjs qa/wiring-panel-events-check.mjs qa/electrical-explanation-check.mjs qa/panel-route-retry-check.mjs qa/board-snapshot-check.mjs qa/wire-highlight-check.mjs qa/board-import-check.mjs qa/snapshot-import-events-check.mjs qa/lamp-contrast-check.mjs qa/snapshot-reroute-check.mjs qa/project-contract-check.mjs qa/project-runtime-check.mjs qa/project-routing-check.mjs qa/project-session-check.mjs qa/project-files-check.mjs qa/project-view-check.mjs qa/project-acceptance-check.mjs",
     "test:electrical": "npm run typecheck && node --import tsx --test qa/electrical-check.mjs qa/electrical-simulator-check.mjs qa/electrical-power-check.mjs qa/electrical-dol-check.mjs qa/electrical-explanation-check.mjs",
     "offline": "npm run typecheck && node scripts/build-offline.mjs",
     "typecheck": "tsc --noEmit",
-    "reroute": "node --import tsx scripts/reroute-snapshot.mjs"
+    "reroute": "node --import tsx scripts/reroute-snapshot.mjs",
+    "rebuild-project": "node --import tsx scripts/rebuild-project.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

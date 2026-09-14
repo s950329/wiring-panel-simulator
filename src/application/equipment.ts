@@ -2,6 +2,7 @@ import type {ComponentRuntime} from '../core/contracts.ts';
 import type {Component, Wire} from '../electrical/contracts.ts';
 import {createTeachingComponent} from '../electrical/catalog.ts';
 
+export interface EquipmentDescriptor {id: string; definitionId: string; label: string; terminals: readonly string[]; enabled?: boolean}
 export const externalEquipment = [
   {id: 'CONTROL', definitionId: 'teaching-source', label: '控制電源', terminals: ['L', 'N']},
   {id: 'MAIN', definitionId: 'teaching-three-phase-source', label: '三相主電源', terminals: ['L1', 'L2', 'L3']},
@@ -19,9 +20,9 @@ export function assemblyWires(components: ReadonlyMap<string, ComponentRuntime>)
     }));
   });
 }
-export function electricalComponents(components: ReadonlyMap<string, ComponentRuntime>): Component[] {
+export function electricalComponents(components: ReadonlyMap<string, ComponentRuntime>, equipment: readonly EquipmentDescriptor[] = externalEquipment): Component[] {
   return [...components.values()].map(c => {
     try {return createTeachingComponent(c.placement);}
     catch {return {id: c.id, terminals: c.terminalDefinitions.map(t => t.id), ...(c.placement.parentId ? {parentId: c.placement.parentId} : {})};}
-  }).concat(externalEquipment.map(createTeachingComponent));
+  }).concat(equipment.map(createTeachingComponent));
 }

@@ -108,3 +108,16 @@ test('imported session selects the restored wire and resumes undo across both wi
   assert.equal(s.snapshot().externalWires.length, 0); assert.equal(ui.routing.wires.length, 1);
   panel.querySelector('[data-wire-undo]').onclick(); assert.equal(ui.routing.wires.length, 0);
 });
+
+test('project wiring uses configured external devices and its shared ordered connection service; disposed UI ignores keys', async()=>{
+ const {createProjectRuntime}=await import('../src/project/runtime.ts');const {minimalProject}=await import('./helpers/project-data.mjs');
+ let panel;const listeners=new Map();globalThis.document={createElement:tag=>new Element(tag),activeElement:{tagName:'BODY'},
+  querySelector:s=>s==='.select-wrap'?{before:p=>{panel=p}}:new Element()};delete globalThis.window;
+ const p=minimalProject();p.configuration.components.push({id:'customSupply',definitionId:'teaching-source',definitionVersion:1,placement:null});
+ const runtime=createProjectRuntime(p);globalThis.window={addEventListener:(n,h)=>listeners.set(n,h),removeEventListener:(n,h)=>{if(listeners.get(n)===h)listeners.delete(n)}};
+ const ui=createWirePanel(runtime.model,{toast(){},isFlapOpen:()=>false,simulation:()=>runtime.simulation,runtime});
+ await ui.pick('customSupply','L');await ui.pick('coil','A1');assert.equal(runtime.connectionOrder().length,1);
+ assert.equal(runtime.simulation.snapshot().externalWires.length,1);assert.equal(ui.routing,runtime.routing);
+ panel.querySelector('[data-wire-undo]').onclick();assert.equal(runtime.connectionOrder().length,0);
+ assert.equal(typeof ui.dispose,'function');const key=listeners.get('keydown');ui.dispose();assert.equal(listeners.size,0);key({key:'Delete',preventDefault(){}});runtime.dispose();
+});
