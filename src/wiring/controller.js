@@ -53,4 +53,11 @@ export class WiringController{
   this.renderSelection();
  }
  snapshot(){return structuredClone(this.wires);}
+ replacePrepared(prepared){
+  this.assertEditable();
+  const old=this.group;this.group=prepared.group;this.wires=prepared.wires;
+  this.sequence=this.wires.reduce((n,w)=>Math.max(n,Number(w.id.slice(1))),0);
+  this.world.add(this.group);this.select(null);old.removeFromParent();
+  for(const mesh of old.children){mesh.geometry.dispose();mesh.material.dispose();}old.clear();
+ }
 }

@@ -95,6 +95,28 @@ export class SimulationController {
     return result;
   }
   private assertEditable(): void {if (!this.canEdit) throw new Error('請先停止模擬再修改接線');}
+  /** Validate the complete replacement before returning a synchronous commit. Imported results are never executed. */
+  prepareRestore(snapshot: {externalWires: readonly Wire[]; power: {control: boolean; main: boolean}}, physicalWires: readonly Wire[]) {
+    this.assertEditable();
+    const external = structuredClone([...snapshot.externalWires]), power = {...snapshot.power};
+    if (typeof power.control !== 'boolean' || typeof power.main !== 'boolean') throw new Error('電源設定無效');
+    const terminals = new Set(electricalComponents(this.components).flatMap(c => c.terminals.map(t => endpointKey({component: c.id, terminal: t}))));
+    const pair = (w: Wire) => [endpointKey(w.from), endpointKey(w.to)].sort().join('|');
+    const pairs = new Set([...physicalWires, ...this.#fixedWires].map(pair)), ids = new Set<string>();
+    let sequence = 0;
+    for (const w of external) {
+      const n = Number(w.id.slice(1));
+      if (!Number.isSafeInteger(n) || n <= 0 || n >= 1e9 || w.id !== `E${n}` || ids.has(w.id)) throw new Error('外接線編號無效或重複');
+      if (!terminals.has(endpointKey(w.from)) || !terminals.has(endpointKey(w.to))) throw new Error('找不到外接線端子');
+      if (!isExternalEquipment(w.from.component) && !isExternalEquipment(w.to.component)) throw new Error('盤內端子請使用實體走線');
+      if (endpointKey(w.from) === endpointKey(w.to) || pairs.has(pair(w))) throw new Error('外接線自接或重複');
+      ids.add(w.id); pairs.add(pair(w)); sequence = Math.max(sequence, n);
+    }
+    return () => {
+      this.assertEditable(); this.#external = external; this.#sequence = sequence; this.#power = power;
+      this.#session.reset(); this.#result = null; this.#evaluatedCircuit = null; this.#mode = 'off'; this.publish();
+    };
+  }
   connectExternal(from: Endpoint, to: Endpoint): Wire {
     this.assertEditable();
     const circuit = this.circuit(), valid = (e: Endpoint) => circuit.components.some(c => c.id === e.component && c.terminals.includes(e.terminal));

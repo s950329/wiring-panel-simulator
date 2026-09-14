@@ -4,6 +4,8 @@ import {SimulationController} from './application/simulation.ts';
 import {locateEvidence} from './application/evidence.ts';
 import {createBoardSnapshot} from './application/board-snapshot.ts';
 import {createSnapshotExport} from './views/snapshot-export.ts';
+import {importBoardSnapshot} from './application/board-import.ts';
+import {createSnapshotImport} from './views/snapshot-import.ts';
 import {createSimulationPanel} from './views/simulation-panel.ts';
 import './style.css';
 import {MODEL_REVISION,MODEL_REVISION_LABEL} from './revision.js';
@@ -71,6 +73,22 @@ function captureBoard(){return createBoardSnapshot({components:app.components,ph
  camera:{azimuth:app.orbit.azimuth,elevation:app.orbit.elevation,radius:app.orbit.radius,target:app.orbit.target.toArray()},
  worldTransform:{position:app.world.position.toArray(),quaternion:app.world.quaternion.toArray(),scale:app.world.scale.toArray()},
  panelAngle:app.world.children.find(o=>o.userData.operationPanel)?.rotation.x||0}});}
+function importBoard(source){
+ if(wireUI?.isBusy())throw new Error('正在完成接線，請稍後再匯入');
+ const result=importBoardSnapshot(source,{world:app.world,components:app.components,routing:wireUI?.routing,
+  simulation:simulation||null,page:inspectMC1?'component':'board'});
+ cancelInteraction();sound(false);$('.tip').style.display='none';
+ const view=result.view;flapOpen=view.operationPanelOpen;app.setFlap(flapOpen,true);
+ $('#flap-btn').textContent=flapOpen?'收合操作板':'展開操作板';$('#flap-btn').classList.toggle('active',flapOpen);$('#flap-btn').setAttribute('aria-pressed',String(flapOpen));
+ if(inspectMC1)setAssembly(view.attachmentsShown);
+ app.grid.visible=view.gridVisible;$('#grid-btn').classList.toggle('active',view.gridVisible);$('#grid-btn').setAttribute('aria-pressed',String(view.gridVisible));
+ Object.assign(app.orbit,{azimuth:view.camera.azimuth,elevation:view.camera.elevation,radius:view.camera.radius});app.orbit.target.fromArray(view.camera.target);app.orbit.update();
+ document.querySelectorAll('[data-view]').forEach(b=>b.classList.remove('active'));updateCameraReadout();
+ currentId=view.selectedComponent||(inspectMC1?'MC1':'MC2');terminalId=view.selectedTerminal;
+ app.select(currentId);renderDetails();if(terminalId)app.glowTerminal(currentId,terminalId);
+ wireUI?.restoreSession(result.session);simulationUI?.render();return result;
+}
+createSnapshotImport($('.sidebar'),importBoard,toast);
 createSnapshotExport($('.sidebar'),captureBoard,toast);
 // Explicit development interface: stable IDs and transforms, independent of mesh order.
 window.wiringLab={getSnapshot:captureBoard,getWires:()=>wireUI?.routing.snapshot()||[],getSimulation:()=>simulation?.snapshot()||null,getRevision:()=>MODEL_REVISION,getConfiguration:()=>structuredClone({schemaVersion:1,board,placements,frontPlacements,layout,frontControls,ducts,rails}),getState:()=>Object.fromEntries([...app.components].map(([id,c])=>[id,{...c.state}])),getCamera:()=>({azimuth:app.orbit.azimuth,elevation:app.orbit.elevation,radius:app.orbit.radius,rightY:app.camera.matrixWorld.elements[1],boardRotation:app.world.rotation.toArray().slice(0,3)}),getTerminals:id=>app.components.get(id).terminals.map(t=>({id:t.id,displayName:t.displayName||t.id,group:t.group||null,local:[...t.local],exitDirection:[...t.definition.exitDirection],electricalRole:t.definition.electricalRole}))};

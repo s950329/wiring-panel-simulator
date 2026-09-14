@@ -74,6 +74,11 @@ export function createWirePanel(app,{toast,isFlapOpen,onChange,simulation=()=>nu
  render();document.querySelector('.hint').textContent='點兩個端子接線 · 拖曳環繞 · 點線追查';
  return {routing,pick,select,render,setMode,cancel,trace,clearEvidence,isConnect:()=>mode==='connect'&&editable(),isBusy:()=>busy,
   snapshotSession:()=>structuredClone({mode,pending,busy,selectedWireId:externalSelected||routing.selected,evidenceIds:[...evidence],undoOrder:history,lastAttempt}),
+  restoreSession(session){
+   if(busy||!editable())throw new Error('請等接線完成並停止模擬再匯入');
+   history=[...session.undoOrder];pending=null;lastAttempt=null;evidence.clear();externalSelected=null;routing.select(null);
+   setMode(session.mode);if(session.selectedWireId)select(session.selectedWireId);else render();
+  },
   movePanel(open,previous){routing.movePanel(()=>app.setFlap(open,true),()=>app.setFlap(previous,true),front);if(editable())setMode(open?'connect':'operate');},
   canMoveCover:id=>!busy&&!routing.hasComponent(id)&&!external().some(w=>w.from.component===id||w.to.component===id)};
 }

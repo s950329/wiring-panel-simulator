@@ -97,3 +97,14 @@ test('diagnostic export keeps the failed connection endpoints and error without 
   assert.equal(ui.snapshotSession().lastAttempt.to.terminal, '2'); assert.equal(ui.snapshotSession().undoOrder.length, 1);
   assert.deepEqual(s.circuit().wires, before);
 });
+
+test('imported session selects the restored wire and resumes undo across both wire kinds', async () => {
+  const {ui, simulation: s, panel, connect, active} = make();
+  await connect(['CONTROL', 'L'], ['QF1', 'L1']); await connect(['MC1', 'A1'], ['TB2', '1A']);
+  await ui.pick('TB1', '42A');
+  ui.restoreSession({mode: 'operate', pending: null, busy: false, selectedWireId: 'E1', evidenceIds: [], undoOrder: ['W01', 'E1'], lastAttempt: null});
+  assert.equal(ui.isConnect(), false); assert.deepEqual(active(), ['E1']); assert.equal(ui.snapshotSession().pending, null);
+  panel.querySelector('[data-wire-undo]').onclick();
+  assert.equal(s.snapshot().externalWires.length, 0); assert.equal(ui.routing.wires.length, 1);
+  panel.querySelector('[data-wire-undo]').onclick(); assert.equal(ui.routing.wires.length, 0);
+});
