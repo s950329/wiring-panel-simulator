@@ -3,9 +3,9 @@ import type {Endpoint, Wire} from '../electrical/contracts.ts';
 import type {BoardViewState, RoutedWire, WiringSessionState} from './board-snapshot.ts';
 import {board, ducts, rails, panelGateway, placements, frontPlacements} from '../layout.ts';
 import {assemblyWires, electricalComponents} from './equipment.ts';
-import {MODEL_REVISION} from '../revision.js';
 
 export const MAX_SNAPSHOT_BYTES = 10 * 1024 * 1024;
+const compatibleRevisions = new Set(['WIRE-R8', 'WIRE-R9', 'WIRE-R10']);
 function requireValue(ok: unknown, message: string): asserts ok {if (!ok) throw new Error(message);}
 const record = (v: unknown, name: string): Record<string, unknown> => {
   requireValue(v !== null && typeof v === 'object' && !Array.isArray(v), `${name} 格式錯誤`); return v as Record<string, unknown>;
@@ -54,7 +54,7 @@ export function parseBoardSnapshot(source: string, components: ReadonlyMap<strin
   let value: unknown; try {value = JSON.parse(source.replace(/^\uFEFF/, ''));} catch {throw new Error('無法讀取 JSON，請選擇匯出的盤面檔案');}
   const data = record(value, '快照');
   requireValue(data.format === 'wiring-panel-snapshot' && data.schemaVersion === 1, '不支援此快照格式或版本');
-  requireValue(data.revision === 'WIRE-R8' || data.revision === MODEL_REVISION, '模型版本不相容，請使用 WIRE-R8 或本版匯出的檔案');
+  requireValue(typeof data.revision === 'string' && compatibleRevisions.has(data.revision), '模型版本不相容，支援 WIRE-R8～WIRE-R10 匯出的檔案');
   requireValue(equalData(data.configuration, {board, ducts, rails, panelGateway, placements, frontPlacements}), '盤面配置不相容');
   requireValue(equalData(data.units, {coordinates: 'scene-units', angles: 'radians'}), '座標單位不相容');
   const v = record(data.view, '視角'); requireValue(v.page === page, '檔案頁面不符：請在整盤或 MC1 單獨檢視的對應頁面匯入');

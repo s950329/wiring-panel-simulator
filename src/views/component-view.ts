@@ -1,4 +1,4 @@
-import { MathUtils } from 'three';
+import { Color, MathUtils } from 'three';
 import type { ComponentState, ComponentView, ModelContext, TerminalDefinition, ViewContext } from '../core/contracts.ts';
 
 /** Adapts the verified model builders to a view contract without rebuilding their geometry. */
@@ -8,7 +8,8 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
   readonly terminals;
   private readonly originalCapY: number;
   private readonly originalPlungerY: number;
-  private readonly color: number;
+  private readonly lampOffColor: Color;
+  private readonly lampOnColor: Color;
   private readonly lamp: boolean;
   private readonly contactor: boolean;
 
@@ -18,9 +19,12 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
     this.terminals = model.terminals;
     this.originalCapY = model.parts.cap?.position.y ?? 0;
     this.originalPlungerY = model.parts.plunger?.position.y ?? 0;
-    this.color = model.def.color ?? 0;
+    this.lampOffColor = new Color(model.def.color ?? 0).multiplyScalar(.06);
+    this.lampOnColor = new Color(model.def.color ?? 0);
+    this.lampOnColor.multiplyScalar(1 / Math.max(this.lampOnColor.r, this.lampOnColor.g, this.lampOnColor.b, .001));
     this.lamp = model.def.behavior === 'lamp';
     this.contactor = model.def.behavior === 'contactor';
+    if (this.lamp) this.updateLamp(false);
     const ids = new Set<string>();
     for (const t of this.terminals) {
       if (ids.has(t.id)) throw new Error(`${model.def.id}: 重複端子 ${t.id}`);
@@ -65,10 +69,15 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
       p.cover1.rotation.x = lerp(p.cover1.rotation.x, s.open ? -1.3 : 0, .18);
       p.cover2.rotation.x = p.cover1.rotation.x;
     }
-    if (p.color && this.lamp && s.kind === 'toggle') {
-      p.color.emissive.setHex(this.color);
-      p.color.emissiveIntensity = (simulated ? context.electrical?.energized === true : s.on) ? 1.7 : 0;
-    }
+    if (this.lamp && s.kind === 'toggle') this.updateLamp(simulated ? context.electrical?.energized === true : s.on);
+  }
+  private updateLamp(on: boolean): void {
+    const material = this.parts.color; if (!material) return;
+    material.color.copy(on ? this.lampOnColor : this.lampOffColor);
+    material.emissive.copy(this.lampOnColor); material.emissiveIntensity = on ? 3.2 : 0;
+    // Dim idle reflections too: the coloured lens should not resemble a powered neighbour.
+    material.roughness = on ? .25 : .72; material.metalness = on ? .08 : 0;
+    material.clearcoat = on ? .7 : .08; material.envMapIntensity = on ? .6 : .12;
   }
   syncRoutingPose(state: ComponentState): void {
     if (state.kind !== 'cover') return;

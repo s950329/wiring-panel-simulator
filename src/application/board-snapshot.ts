@@ -34,7 +34,8 @@ export function createBoardSnapshot(input: {components: ReadonlyMap<string, Comp
       mechanisms: Object.fromEntries((['bridge', 'plunger', 'cap', 'knob', 'dial', 'test', 'reset', 'lever', 'cover1', 'cover2'] as const)
         .flatMap(key => {const part = c.parts[key]; return part ? [[key, transform(part)]] : [];})),
       ...(c.parts.color ? {material: {color: `#${c.parts.color.color.getHexString()}`, emissive: `#${c.parts.color.emissive.getHexString()}`,
-        emissiveIntensity: c.parts.color.emissiveIntensity}} : {})})),
+        emissiveIntensity: c.parts.color.emissiveIntensity, roughness: c.parts.color.roughness, metalness: c.parts.color.metalness,
+        clearcoat: c.parts.color.clearcoat, envMapIntensity: c.parts.color.envMapIntensity}} : {})})),
     wiring: {physical: input.physicalWires, external: simulation?.externalWires ?? [], fixed: simulation?.fixedWires ?? [], session: input.wiringSession},
     simulation: simulation ? {...simulation, circuit: input.simulation!.circuit()} : null,
     view: input.view});

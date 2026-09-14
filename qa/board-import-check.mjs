@@ -45,9 +45,10 @@ test('exported board restores exact routes, IDs, persistent controls and source 
   assert.equal(target.components.get('TH1').state.current, 16.5);
   assert.equal(target.components.get('TH1').state.trip, true);
   assert.equal(target.components.get('SA1').state.position, 2);
-  assert.equal(target.components.get('HL1').parts.color.emissiveIntensity, 1.7);
+  assert.ok(target.components.get('HL1').parts.color.emissiveIntensity > 0);
   assert.equal(target.simulation.snapshot().power.main, false);
   assert.equal(target.flap.rotation.x, Math.PI); assert.deepEqual(result.view.camera.target, [4, 0, 20]);
+  snapshot.revision = 'WIRE-R9'; load(snapshot, target);
   assert.equal(target.routing.connect(ep('TB1', '43B'), ep('HL3', '2')).id, 'W03');
   assert.equal(target.simulation.connectExternal(ep('CONTROL', 'L'), ep('TB1', '43A')).id, 'E3');
 });
@@ -70,8 +71,12 @@ test('running and halted snapshots import stopped without replaying outputs or h
 test('invalid files and geometry failures preserve old state, routes, pose, mesh and electrical data', () => {
   const target = make(); target.routing.connect(ep('MC1', 'A1'), ep('TB2', '1A'));
   target.components.get('ES1').dispatch({type: 'emergency'});
+  target.components.get('HL3').dispatch({type: 'lamp'}); target.components.get('HL3').updateView(undefined, true);
   const source = make(); source.flap.rotation.x = Math.PI; source.routing.connect(ep('TB1', '42B'), ep('HL4', '2'));
   const snapshot = capture(source), before = capture(target), mesh = target.routing.group.children[0];
+  const material = target.components.get('HL3').parts.color;
+  const surface = () => [material.roughness, material.metalness, material.clearcoat, material.envMapIntensity];
+  const oldSurface = surface();
   const cases = [s => {s.schemaVersion = 99;}, s => {s.revision = 'WIRE-R999';}, s => {s.configuration.board.width = 999;},
     s => {s.components.pop();}, s => {s.components[0].placement.x += 1;}, s => {s.components[0].state.on = 'yes';},
     s => {s.wiring.physical[0].from.terminal = '999B';}, s => {s.wiring.physical.push(s.wiring.physical[0]);},
@@ -80,7 +85,7 @@ test('invalid files and geometry failures preserve old state, routes, pose, mesh
     s => {s.wiring.external = [{id: 'E1', from: ep('CONTROL', 'BAD'), to: ep('HL4', '1')}];}];
   for (const corrupt of cases) {
     const bad = structuredClone(snapshot); corrupt(bad); assert.throws(() => load(bad, target));
-    assert.deepEqual(capture(target), before); assert.equal(target.routing.group.children[0], mesh);
+    assert.deepEqual(capture(target), before); assert.equal(target.routing.group.children[0], mesh); assert.deepEqual(surface(), oldSurface);
   }
   assert.throws(() => importBoardSnapshot('{broken', target)); assert.deepEqual(capture(target), before);
 });

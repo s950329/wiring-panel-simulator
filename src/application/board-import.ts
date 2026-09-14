@@ -21,7 +21,8 @@ export function importBoardSnapshot(source: string, target: ImportTarget) {
   const flap = world.children.find(o => o.userData.operationPanel), oldAngle = flap?.rotation.x;
   const previous = [...components.values()].map(c => ({c, state: c.state, electrical: c.electricalOutput,
     parts: Object.values(c.parts).filter((p): p is Object3D => p instanceof Object3D).map(p => ({p, position: p.position.clone(), quaternion: p.quaternion.clone(), scale: p.scale.clone()})),
-    material: c.parts.color ? {color: c.parts.color.color.clone(), emissive: c.parts.color.emissive.clone(), intensity: c.parts.color.emissiveIntensity} : null}));
+    material: c.parts.color ? {color: c.parts.color.color.clone(), emissive: c.parts.color.emissive.clone(), intensity: c.parts.color.emissiveIntensity,
+      roughness: c.parts.color.roughness, metalness: c.parts.color.metalness, clearcoat: c.parts.color.clearcoat, envMapIntensity: c.parts.color.envMapIntensity} : null}));
   const apply = () => {
     for (const c of components.values()) {applyComponentState(c, data.states.get(c.id)!); c.setElectricalOutput({mode: 'off', energized: false});}
     for (const c of components.values()) {c.updateView(components.get(c.placement.parentId ?? ''), true); c.syncRoutingPose();}
@@ -32,7 +33,11 @@ export function importBoardSnapshot(source: string, target: ImportTarget) {
     for (const {c, state, electrical, parts, material} of previous) {
       applyComponentState(c, state); c.setElectricalOutput(electrical);
       for (const {p, position, quaternion, scale} of parts) {p.position.copy(position); p.quaternion.copy(quaternion); p.scale.copy(scale);}
-      if (material && c.parts.color) {c.parts.color.color.copy(material.color); c.parts.color.emissive.copy(material.emissive); c.parts.color.emissiveIntensity = material.intensity;}
+      if (material && c.parts.color) {
+        c.parts.color.color.copy(material.color); c.parts.color.emissive.copy(material.emissive); c.parts.color.emissiveIntensity = material.intensity;
+        c.parts.color.roughness = material.roughness; c.parts.color.metalness = material.metalness;
+        c.parts.color.clearcoat = material.clearcoat; c.parts.color.envMapIntensity = material.envMapIntensity;
+      }
     }
     if (flap && oldAngle !== undefined) flap.rotation.x = oldAngle;
     world.updateMatrixWorld(true);
