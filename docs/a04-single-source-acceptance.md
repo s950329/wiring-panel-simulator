@@ -1,37 +1,47 @@
 # WIRE-R14：A04 單一電源修正與驗收
 
-## 行為與交付範圍
+## 實作範圍
 
-依已確認的 v0.2 供電規格，正常專案只接受零／一組三相來源，沒有獨立 CONTROL、available 參數或個別電源開關。零來源是尚未接入電源的草稿。A04 明示選用 `teaching-ac220-three-phase-source` v1；同一來源的三組相對可供相容控制負載使用，來源本身仍只有一個。
+依 v0.2 規格，正常專案只接受零／一組三相來源。零來源是尚未接電的編線草稿；完整 A04 使用一組 `teaching-ac220-three-phase-source` v1。沒有獨立 CONTROL、available 參數或個別主／控制電源開關。
 
-來源在測試模式中啟用。QF1 只改變其三組接點，不更改來源的 enabled；進線端仍連至電源，錯接在進線側的旁路不會被軟體隱藏。「開始測試／返回配線」是軟體運算／編線邊界，不是第二顆供電開關。
+來源僅在測試模式執行求解。QF1 改變自己的三組接點，不改變來源 enabled；進線端仍接至來源，刻意接在進線側的旁路也不會被全域 OFF 捷徑掩蓋。「開始測試／返回配線」是運算及編線模式，不是第二個電源。
 
-A04 範例為 `examples/a04-motor-start.project.json`：28 條原生盤內走線、6 條外接線、3 條組裝導體，預設 QF1 OFF、操作板閉合、模擬未執行。兩個 FUSE 的 IN 改為 QF1:T1／T3；OUT 維持控制回路端點。沒有手工保存 points 或虛擬 CONTROL 旁路。
+A04：`examples/a04-motor-start.project.json`。28 條原生盤內線、6 條外接線、3 條固定組裝導體，預設 QF1 OFF、操作板閉合、模擬未執行。兩顆 FUSE 的 IN 分別從 QF1:T1／T3 取電，OUT 保留控制支路；四端都在真實盤內連線中。檔案只保存 configuration 與 connections，不保存人工 points。
 
-整合以專案格式分支 `98ba3d274f377a204cce8e12ad078e0f8a56ce37` 為程式基底，保留 main `38b1c13834bc606214740548ce64dbae04233876` 的最新規格。原專案格式分支不覆寫。
+整合保留 main 規格 `38b1c13834bc606214740548ce64dbae04233876` 與已完成的 project-format 分支 `98ba3d274f377a204cce8e12ad078e0f8a56ce37`，不覆寫原分支。實作 tree：`4cfb3e031cf3ca1107b3afbfa9ca8dfc6ff8f02e`；實作 commit：`e1d0c89558ad3dca41ef5a336d0ca947f04c38e8`。
 
-## 實際本機驗證
+## 已執行驗證
 
-- 原分支基準：144 項測試通過。
-- 新版完整 `npm test`：174 項通過、0 失敗、0 跳過，含 TypeScript strict。
-- 新相間能力測試先重現失敗，再確認成功；稀疏索引的無效宣告另以失敗／成功測試保護。
-- 本盤唯一來源、無 power/sourcePower/setPower/setSource、拒絕來源 enabled/available 等契約通過。
-- 實際 Three.js 重建 28 條線、兩輪操作板開闔、逐線實體碰撞／線距／自交、專案匯出再匯入、所有實例改名等回歸通過。既有模型基準檔未修改。
-- 按 ON 啟動／放開保持／OFF 停止／過載警報／RESET 不自啟，與 QF1 斷開／恢復、警報時斷開 QF1、進線側仍連到來源、故意旁路 QF1、任一 FUSE／其四端接線中斷、S 相缺失及持續按住 ON 的恢復行為均通過。
-- 相對省略、無效宣告、不同 profile、同相、相間短路、跨來源衝突、串聯負載與懸空分支仍維持原安全分類，沒有關掉故障檢查。
-- 舊有 CONTROL 接線的拒絕載入保留原專案；未接線的自動 CONTROL 才能移除且顯示報告。MAIN generic 保留原能力，不默默升級。
-- `npm run build` 成功，包含獨立 HTML 兩段 script 的語法與逐位元組檢查，以及 Vite 建置。大型 chunk 警示仍如實保留。
+原分支基準為 144 項測試。新版在本機及 GitHub Actions 都執行 `npm test`：**174 通過、0 失敗、0 跳過**，含 TypeScript strict。新功能有先失敗再成功的回歸，包含稀疏索引等無效相對宣告；既有幾何基準未修改。
 
-## 瀏覽器與發布狀態
+實際 Three.js 與電性引擎驗證涵蓋：完整 28 條線重建、端子 anchor、碰撞／間距／自交、兩輪操作板開闔、專案往返、實例改名、啟動、自保持、停止、過載與 RESET、兩顆保險絲及四端斷線、QF1 斷開／恢復、進線側帶電、故意旁路、S 相缺失與持續按住 ON 時的恢復行為。
 
-本機 Chromium 在進入 `http://127.0.0.1:4173/` 時遭 `ERR_BLOCKED_BY_ADMINISTRATOR`，未完成本機瀏覽器操作驗收。沒有變更瀏覽器管理政策。
+相對省略、無效宣告、profile 不同、同相、短路、混源、串聯負載、懸空分支及線圈收斂仍有原有保護。舊 CONTROL 有接線時拒絕載入並保留原專案；只有未使用的自動 CONTROL 可移除且須回報。Generic MAIN 不自動升級相間能力。
 
-`.github/workflows/project-format-ci.yml` 與 `qa/project-browser-check.py` 已更新為 R14 功能案例，將在隔離分支執行實際 pointer 操作、A04／不同專案匯入、QF1、按鈕、警報、取消、單檔 HTTP 與 file 入口。遠端驗收以對應 commit 的 Actions 結果為準。畫面截圖有獨立 captureWarnings；截圖失敗不得寫成目視通過。
+`npm run build` 通過，包含 strict、獨立 HTML 內嵌程式語法及逐位元組一致性、Vite production build。既有大型 chunk 警示保留。依賴未升級；npm ci 回報的既有 audit 警示（1 moderate、1 high）未在本次修正，不宣稱完成安全稽核。
 
-目前尚未取得可更新原 `leo-wiring-panel.leochien0808.chatgpt.site` 的發布工具。本文件記錄程式／建置結果，不代表既有 Site 已更新。保留 `.openai/hosting.json` 原 project_id，禁止另建替代 Site。
+## 真實瀏覽器驗證
 
-## 邊界
+[驗證執行紀錄](https://github.com/s950329/wiring-panel-simulator/actions/runs/34857197663) 在 SHA-256 及完整 Git tree 核對後，使用 Playwright 1.55.0／Chromium 140 執行實際 UI 操作。`qa-results/browser-results.json` 記錄 **25 項通過、pageErrors 為空**，不是只跑 Node 模擬：
 
-仍為教學導通／供電模型，沒有實機額定、安全認證、保險絲時間／電流曲線、轉速或相量數值計算。MC 狀態綠燈不保證馬達三相完整。TH20 既有量程不因題圖標示 3.3A 就被改寫。保險絲蓋開闔不是熔斷。
+- R14 啟動、預設盤面、A04 原生重建、只有 MAIN／M1、沒有獨立供電操作、QF1 預設 OFF。
+- 啟動／放開自保持／三相馬達、OFF 停止、TH 過載紅燈與蜂鳴器、RESET 不自啟。
+- QF1 切斷控制及警報供電，恢復後 ON 已放開則不自啟；原始來源仍只有一個。
+- 兩輪操作板開闔、僅端點匯出、不同配置替換、任意實例檢視、取消保留、同來源兩驅動器、重設。
+- HTTP 提供的單檔 HTML，以及本地 `file://` 單檔，均實際啟動及匯入專案成功。
 
-`application/simulation.ts` 與舊快照工具僅為歷史回歸／單元件除錯保留；正常配線頁使用 `project/simulation.ts`，不建立舊來源。一般專案不能匯入 debugger 的執行快照來恢復雙來源。
+**截圖／目視驗收仍有缺口：** `a04-loaded.png` 截圖逾時 10 秒，已在 captureWarnings 明列。這不否定成功的 UI／電路斷言，但不能宣稱已完成 FUSE 四端的螢幕目視驗收。本機 Chromium 導航另受管理政策阻擋；未更改該政策。
+
+首次驗證 run 的測試、建置與瀏覽器步驟均成功，但最後由 runner 推送 workflow 檔案時，GITHUB_TOKEN 缺少 workflows 權限而失敗。因此不把該 run 的整體狀態稱為成功。已透過正常授權的 GitHub repository connector 建立相同已驗證 tree 的實作 commit；後續 branch／main 的唯讀 CI 再驗證並封存原始碼，無須 runner 寫入分支。
+
+## 交付與既有 Site
+
+R14 單檔 HTML 與新 A04 專案配套交付；新 project JSON **不能拿到尚為 R12 的舊站匯入**。R14 HTML 已由上述真實瀏覽器測試確認可從本地檔案開啟。
+
+現有 `leo-wiring-panel.leochien0808.chatgpt.site` **尚未發布此次更新**：目前沒有可更新該既有 Site 的授權發布工具。保留 `.openai/hosting.json` 的原 project_id，不另建替代網站。網站部署包只是 build artifact，不是已發布證據。
+
+## 模型邊界
+
+仍為教學導通／供電模型，不計算真實電流、相量、馬達轉速、熔斷時間或熱過載曲線，也不是實機安全認證。MC 綠燈不保證馬達三相完整；TH20 量程未因題圖標示 3.3A 而改寫；保護蓋開闔不是保險絲熔斷。
+
+歷史 `application/simulation.ts` 與快照工具僅保留作回歸／單元件除錯；正常頁面使用無獨立電源控制的 `project/simulation.ts`。一般匯入不能藉 debugger 快照恢復雙來源。

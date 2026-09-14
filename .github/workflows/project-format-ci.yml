@@ -18,7 +18,7 @@ jobs:
           node-version: '22.16.0'
           cache: npm
       - run: npm ci
-      - run: npm test | tee unit-tests.log
+      - run: set -o pipefail; npm test | tee unit-tests.log
       - run: npm run build
       - name: Browser test dependencies
         run: |
