@@ -1,0 +1,32 @@
+name: Diagnose A04 reset deadline
+on:
+  push:
+    branches: [diagnose/a04-reset]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - run: npm ci && npm run build
+      - run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Same real browser scenario with measured reset deadline
+        run: |
+          python -m http.server 4173 --directory dist > /tmp/wiring-http.log 2>&1 &
+          python qa/diagnose-reset.py http://127.0.0.1:4173
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a04-reset-diagnostic
+          path: qa-results/
+          retention-days: 3
