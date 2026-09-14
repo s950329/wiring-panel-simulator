@@ -22,21 +22,26 @@ test('scene environment is bound to actual lamp materials so the renderer uses e
   assert.equal(components.get('PB1').parts.color.envMap, null, 'pushbutton material keeps the existing shared scene lighting');
 });
 
-test('each actual lamp lens is dark when idle and much brighter than all unlit neighbours when tested', () => {
+test('each idle lamp retains a recognisable colour and becomes much brighter than unlit neighbours when tested', () => {
   const {components} = buildModel(new T.Scene());
   const lamps = ['HL1', 'HL2', 'HL3', 'HL4'].map(id => components.get(id));
   const idle = lamps.map(sample);
   for (const c of lamps) {
-    const m = c.parts.color, base = new T.Color(c.definition.color);
-    assert.ok(luminance(m.color) < luminance(base) * .1, `${c.id} starts with a dark lens`);
+    const m = c.parts.color, base = new T.Color(c.definition.color), off = m.color.clone();
+    const display = off.clone().convertLinearToSRGB();
+    assert.ok(Math.max(display.r, display.g, display.b) >= .55, `${c.id} retains visible idle colour instead of looking black`);
+    assert.ok(Math.max(display.r, display.g, display.b) <= .7, `${c.id} remains subdued when idle`);
+    const hue = off.getHSL({}), baseHue = base.getHSL({});
+    assert.ok(Math.abs(hue.h - baseHue.h) < .001, `${c.id} retains its catalogue hue`);
     assert.equal(m.emissiveIntensity, 0); assert.ok(m.envMapIntensity < .25, 'room reflections cannot make an idle lens look lit');
     const meshes = []; c.root.traverse(o => {if (o.isMesh && o.material === m) meshes.push(o);}); assert.ok(meshes.length >= 2);
     c.dispatch({type: 'lamp'}); c.updateView(undefined, true);
     assert.ok(Math.max(m.color.r, m.color.g, m.color.b) >= .9, `${c.id} restores a vivid lit colour`);
     const light = luminance(m.color) + luminance(m.emissive) * m.emissiveIntensity;
+    assert.ok(light > 12 * luminance(off), `${c.id} still has strong on/off contrast`);
     for (const neighbour of lamps.filter(other => other !== c)) {
       assert.deepEqual(sample(neighbour), idle[lamps.indexOf(neighbour)], 'testing one lamp leaves its neighbours dark');
-      assert.ok(light > 10 * luminance(neighbour.parts.color.color), `${c.id} clearly exceeds ${neighbour.id}'s unlit material brightness`);
+      assert.ok(light > 3 * luminance(neighbour.parts.color.color), `${c.id} clearly exceeds ${neighbour.id}'s unlit material brightness`);
     }
     c.dispatch({type: 'lamp'}); c.updateView(undefined, true); assert.deepEqual(sample(c), idle[lamps.indexOf(c)]);
   }

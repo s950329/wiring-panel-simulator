@@ -19,9 +19,10 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
     this.terminals = model.terminals;
     this.originalCapY = model.parts.cap?.position.y ?? 0;
     this.originalPlungerY = model.parts.plunger?.position.y ?? 0;
-    this.lampOffColor = new Color(model.def.color ?? 0).multiplyScalar(.06);
     this.lampOnColor = new Color(model.def.color ?? 0);
     this.lampOnColor.multiplyScalar(1 / Math.max(this.lampOnColor.r, this.lampOnColor.g, this.lampOnColor.b, .001));
+    // Keep an identifiable lens colour even for the darker red/green catalogue variants.
+    this.lampOffColor = this.lampOnColor.clone().multiplyScalar(.3);
     this.lamp = model.def.behavior === 'lamp';
     this.contactor = model.def.behavior === 'contactor';
     if (this.lamp) this.updateLamp(false);
