@@ -48,7 +48,7 @@ test('exported board restores exact routes, IDs, persistent controls and source 
   assert.ok(target.components.get('HL1').parts.color.emissiveIntensity > 0);
   assert.equal(target.simulation.snapshot().power.main, false);
   assert.equal(target.flap.rotation.x, Math.PI); assert.deepEqual(result.view.camera.target, [4, 0, 20]);
-  for (const revision of ['WIRE-R9', 'WIRE-R10']) { snapshot.revision = revision; load(snapshot, target); }
+  for (const revision of ['WIRE-R9', 'WIRE-R10', 'WIRE-R11']) { snapshot.revision = revision; load(snapshot, target); }
   assert.equal(target.routing.connect(ep('TB1', '43B'), ep('HL3', '2')).id, 'W03');
   assert.equal(target.simulation.connectExternal(ep('CONTROL', 'L'), ep('TB1', '43A')).id, 'E3');
 });

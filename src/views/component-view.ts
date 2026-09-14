@@ -74,8 +74,9 @@ export class ThreeComponentView implements ComponentView<ComponentState> {
   }
   private updateLamp(on: boolean): void {
     const material = this.parts.color; if (!material) return;
-    material.color.copy(on ? this.lampOnColor : this.lampOffColor);
-    material.emissive.copy(this.lampOnColor); material.emissiveIntensity = on ? 3.2 : 0;
+    // Keep the lens pigment stable; excess diffuse + emission washes colours out under ACES.
+    material.color.copy(this.lampOffColor);
+    material.emissive.copy(this.lampOnColor); material.emissiveIntensity = on ? .45 : 0;
     // Dim idle reflections too: the coloured lens should not resemble a powered neighbour.
     material.roughness = on ? .25 : .72; material.metalness = on ? .08 : 0;
     material.clearcoat = on ? .7 : .08; material.envMapIntensity = on ? .6 : .12;
