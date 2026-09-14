@@ -1,0 +1,33 @@
+name: Verify native A04 routing
+on:
+  push:
+    branches: [fix/a04-native-routing]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - run: npm ci
+      - name: Verify existing application
+        run: npm test
+      - name: Package exact verification runtime
+        run: |
+          mkdir -p /tmp/wiring-verification
+          tar -czf /tmp/wiring-verification/runtime.tar.gz src qa scripts public package.json package-lock.json tsconfig.json index.html mc1.html
+          tar -czf /tmp/wiring-verification/dependencies.tar.gz node_modules
+          git rev-parse HEAD > /tmp/wiring-verification/commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a04-verification-runtime
+          path: /tmp/wiring-verification/
+          retention-days: 3
