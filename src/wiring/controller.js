@@ -15,9 +15,15 @@ export function wireMesh(wire){
  const mesh=new T.Mesh(mergeGeometries(geometries),new T.MeshBasicMaterial({color:0xffd629}));geometries.forEach(g=>g.dispose());mesh.userData={wireId:wire.id};mesh.name=wire.id;return mesh;
 }
 export class WiringController{
- constructor(world,components,{canEdit=()=>true}={}){this.world=world;this.components=components;this.canEdit=canEdit;this.wires=[];this.sequence=0;this.selected=null;this.group=new T.Group();this.group.name='user-wires';this.group.userData.wireGroup=true;world.add(this.group);}
+ /** @param {import('three').Group} world
+  * @param {ReadonlyMap<string, import('../core/contracts.ts').ComponentRuntime>} components
+  * @param {{canEdit?: () => boolean, context?: import('./context.ts').RoutingContext}} [options] */
+ constructor(world,components,{canEdit=()=>true,context}={}){this.world=world;this.context=context;this.components=components;this.canEdit=canEdit;this.wires=[];this.sequence=0;this.selected=null;this.group=new T.Group();this.group.name='user-wires';this.group.userData.wireGroup=true;world.add(this.group);}
  assertEditable(){if(!this.canEdit())throw new Error('請先停止模擬再修改接線');}
- connect(from,to){this.assertEditable();for(const c of this.components.values())c.syncRoutingPose();const route=routeWire(this.world,this.components,from,to,this.wires);route.id='W'+String(++this.sequence).padStart(2,'0');const mesh=wireMesh(route);this.group.add(mesh);this.wires.push(route);this.select(route.id);return route;}
+ /** @param {import('../electrical/contracts.ts').Endpoint} from
+  * @param {import('../electrical/contracts.ts').Endpoint} to
+  * @returns {import('../application/board-snapshot.ts').RoutedWire} */
+ connect(from,to){this.assertEditable();for(const c of this.components.values())c.syncRoutingPose();const route=routeWire(this.world,this.components,from,to,this.wires,this.context);route.id='W'+String(++this.sequence).padStart(2,'0');const mesh=wireMesh(route);this.group.add(mesh);this.wires.push(route);this.select(route.id);return route;}
  remove(id){this.assertEditable();const i=this.wires.findIndex(w=>w.id===id);if(i<0)return false;this.wires.splice(i,1);const m=this.group.children.find(m=>m.userData.wireId===id);m.geometry.dispose();m.material.dispose();this.group.remove(m);this.select(null);return true;}
  select(id){this.selected=id;this.evidence=new Set();this.renderSelection();}
  trace(ids){this.selected=null;this.evidence=new Set(ids);this.renderSelection();}
@@ -46,7 +52,7 @@ export class WiringController{
    const collision=new CollisionWorld(collectSolids(this.world));
    const fixed=this.wires.filter(w=>!movingComponents.has(w.from.component)&&!movingComponents.has(w.to.component)&&collision.validate(w.points));
    const routes=[...fixed],replacements=new Map();
-   for(const wire of this.wires){if(fixed.includes(wire))continue;const route={...routeWire(this.world,this.components,wire.from,wire.to,routes),id:wire.id};routes.push(route);replacements.set(wire.id,route);prepared.push(wireMesh(route));}
+   for(const wire of this.wires){if(fixed.includes(wire))continue;const route={...routeWire(this.world,this.components,wire.from,wire.to,routes,this.context),id:wire.id};routes.push(route);replacements.set(wire.id,route);prepared.push(wireMesh(route));}
    this.wires=this.wires.map(w=>replacements.get(w.id)||w);
   }catch(error){for(const mesh of prepared){mesh.geometry.dispose();mesh.material.dispose();}restorePose();throw error;}
   for(const mesh of prepared){const previous=this.group.children.find(m=>m.userData.wireId===mesh.userData.wireId);this.group.remove(previous);previous.geometry.dispose();previous.material.dispose();this.group.add(mesh);}

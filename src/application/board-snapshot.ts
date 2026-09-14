@@ -5,7 +5,7 @@ import type {SimulationController} from './simulation.ts';
 import {board, ducts, rails, panelGateway, placements, frontPlacements} from '../layout.ts';
 import {MODEL_REVISION} from '../revision.js';
 
-export interface RoutedWire extends Wire {readonly points: readonly Vec3[]; readonly viaDucts: readonly number[]; readonly radius: number}
+export interface RoutedWire extends Wire {readonly points: readonly Vec3[]; readonly viaDucts: readonly (number | string)[]; readonly radius: number}
 export interface Transform {readonly position: readonly number[]; readonly quaternion: readonly number[]; readonly scale: readonly number[]}
 export interface BoardViewState {
   readonly page: 'board' | 'component'; readonly selectedComponent: string | null; readonly selectedTerminal: string | null;

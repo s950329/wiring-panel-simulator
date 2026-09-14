@@ -1,7 +1,8 @@
 import {describeTerminal} from './terminals.ts';
 export {describeTerminal} from './terminals.ts';
 import * as T from 'three';
-import {ducts,panelGateway} from '../layout.ts';
+import {getRoutingContext} from './context.ts';
+import {findDuctPath,ductJunctions} from './duct-network.ts';
 import {CollisionWorld,distance,segmentDistance,segments} from './collision.js';
 import {collectSolids} from './solids.js';
 const v=a=>new T.Vector3(...a), round=n=>Math.round(n*1000)/1000;
@@ -14,7 +15,7 @@ class Heap{
 const dirs=[[0,1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,-1,0]];
 function search(start,collision,goal,heuristic,{step=2,limit=14000,bounds}={}){
  const heap=new Heap(),best=new Map(),root={p:start,key:'0,0,0',ijk:[0,0,0],g:0,f:heuristic(start),parent:null};heap.push(root);best.set(root.key,0);let count=0;
- while(heap.a.length&&count++<limit){const n=heap.pop();if(n.g>best.get(n.key))continue;const tail=goal(n.p);if(tail){const path=[];for(let q=n;q;q=q.parent)path.push(q.p);return compact([...path.reverse(),...tail]);}
+ while(heap.a.length&&count++<limit){if(count%64===1)collision.checkpoint?.();const n=heap.pop();if(n.g>best.get(n.key))continue;const tail=goal(n.p);if(tail){const path=[];for(let q=n;q;q=q.parent)path.push(q.p);return compact([...path.reverse(),...tail]);}
   for(let axis=0;axis<dirs.length;axis++){const d=dirs[axis],ijk=n.ijk.map((x,i)=>x+d[i]),key=ijk.join(','),p=start.map((x,i)=>x+ijk[i]*step);if(bounds&&p.some((x,i)=>x<bounds.min[i]||x>bounds.max[i]))continue;const g=n.g+step+(n.axis!==undefined&&axis!==n.axis ? .28 : 0);if(g>=(best.get(key)??Infinity)||!collision.clear(n.p,p))continue;best.set(key,g);heap.push({p,ijk,key,g,f:g+heuristic(p),parent:n,axis});}
  }return null;
 }
@@ -27,8 +28,11 @@ function escape(info,collision,height){
  if(panel?.userData.operationPanel&&Math.abs(panel.rotation.x)<1e-6){
   // Four-contact blocks can put another clamp directly behind this one.
   // Try a lateral lead beneath the plate before heading toward its rear edge.
+  const frame=info.panelFrame,inverse=frame.clone().invert(),rearZ=panel.userData.routingRearZ;
   for(const offset of [0,-4,4,-8,8,-12,12,-16,16,-24,24,-32,32,-40,40])for(const p of ordered){
-   const side=[p[0]+offset,p[1],p[2]],rear=[side[0],p[1],panel.position.z-85],top=[side[0],height,rear[2]];
+   const local=v(p).applyMatrix4(inverse),sideLocal=local.clone();sideLocal.x+=offset;
+   const rearLocal=sideLocal.clone();rearLocal.z=rearZ;
+   const side=sideLocal.applyMatrix4(frame).toArray(),rear=rearLocal.applyMatrix4(frame).toArray(),top=[rear[0],height,rear[2]];
    const path=[p,side,rear,top];if(collision.validate(path))return compact(path);
   }
  }
@@ -39,24 +43,33 @@ function escape(info,collision,height){
   if(path)return path;
  }return null;
 }
-function ductPoint(d,p,lane=0,y=48){return d.rotation===90?[Math.max(d.x-d.length/2+12,Math.min(d.x+d.length/2-12,p[0])),y,d.z+lane]:[d.x+lane,y,Math.max(d.z-d.length/2+12,Math.min(d.z+d.length/2-12,p[2]))];}
-function preferredDuct(info){
+function ductPoint(d,p,lane=0,y=48){const margin=Math.min(12,d.length/4);return d.rotation===90?[Math.max(d.x-d.length/2+margin,Math.min(d.x+d.length/2-margin,p[0])),y,d.z+lane]:[d.x+lane,y,Math.max(d.z-d.length/2+margin,Math.min(d.z+d.length/2-margin,p[2]))];}
+function preferredDuct(info,ducts){
  return ducts.map((d,i)=>{const p=ductPoint(d,info.position),delta=v(p).sub(v(info.position));delta.y=0;const toward=delta.clone().normalize().dot(v(info.heading));return {i,score:delta.length()+(toward<.15?500:0)};}).sort((a,b)=>a.score-b.score)[0].i;
 }
-function panelSide(info){
- return !!info.c.root.parent?.userData.operationPanel||(info.endpoint.component===panelGateway.component&&info.endpoint.terminal.endsWith(panelGateway.side));
+export function panelSide(info,context){
+ const panelGateway=context.gateway;
+ return !!info.c.root.parent?.userData.operationPanel||(panelGateway&&info.endpoint.component===panelGateway.component&&info.endpoint.terminal.endsWith(panelGateway.side));
 }
-function panelCollision(world,components,collision){
- // Keep the complete route on the plate-facing side of the gateway, including
- // local escape searches and A* detours. Never fall back into cabinet ducts.
- const gateway=components.get(panelGateway.component).root;
- const matrix=world.matrixWorld.clone().invert().multiply(gateway.matrixWorld);
- const origin=new T.Vector3().applyMatrix4(matrix),normal=new T.Vector3(0,0,1).transformDirection(matrix);
+export function panelCollision(world,components,collision,context){
+ // A configured gateway defines the plate-facing half-space. Panel-only projects use the leaf's fixed rear edge.
+ const gateway=context.gateway&&components.get(context.gateway.component)?.root;
+ let matrix,origin,normal;
+ if(gateway){
+  matrix=world.matrixWorld.clone().invert().multiply(gateway.matrixWorld);
+  origin=new T.Vector3().applyMatrix4(matrix);
+  normal=new T.Vector3(0,0,context.gateway.side==='B'?1:-1).transformDirection(matrix);
+ }else{
+  const panel=world.children.find(o=>o.userData.operationPanel);
+  if(!panel)throw new Error('操作板側走線缺少操作板');
+  matrix=new T.Matrix4().compose(panel.position,new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),panel.rotation.y),panel.scale);
+  origin=new T.Vector3(0,0,panel.userData.routingRearZ).applyMatrix4(matrix);normal=new T.Vector3(0,0,1).transformDirection(matrix);
+ }
  const allowed=p=>v(p).sub(origin).dot(normal)>=-1e-6;
- const bounded=Object.create(collision);
- bounded.clear=(a,b=a)=>allowed(a)&&allowed(b)&&collision.clear(a,b);
+ const bounded=Object.create(collision);bounded.clear=(a,b=a)=>allowed(a)&&allowed(b)&&collision.clear(a,b);
  return bounded;
 }
+
 function join(a,b,c,accept=()=>true){
  const orders=[[1,0,2],[1,2,0],[0,2,1],[2,0,1],[0,1,2],[2,1,0]];
  for(const order of orders){const path=[a];let p=[...a];for(const axis of order){p=[...p];p[axis]=b[axis];path.push(p);}const candidate=compact(path);if(c.validate(candidate)&&accept(candidate))return candidate;}
@@ -77,16 +90,30 @@ export function validateSelf(points){
   if(segmentDistance(a,b,c,d)<2.05)return false;
  }return true;
 }
-export function routeWire(world,components,from,to,wires=[]){
+export function routeWire(world,components,from,to,wires=[],options){
+ const context=getRoutingContext(world,options),ducts=[...context.ducts].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+ const deadline=Date.now()+(context.maxSearchMs??60000);
+ const checkpoint=()=>{context.checkpoint?.();if(Date.now()>deadline)throw new Error('走線搜尋超過時間上限，請調整配置');};checkpoint();
  if(from.component===to.component&&from.terminal===to.terminal)throw new Error('請選另一個端子');
  const key=e=>e.component+':'+e.terminal;
  if(wires.some(w=>(key(w.from)===key(from)&&key(w.to)===key(to))||(key(w.to)===key(from)&&key(w.from)===key(to))))throw new Error('這兩個端子已經接線');
  const solids=collectSolids(world),baseCollision=new CollisionWorld(solids,wires),a=describeTerminal(world,components,from),b=describeTerminal(world,components,to);
- const direct=panelSide(a)&&panelSide(b),collision=direct?panelCollision(world,components,baseCollision):baseCollision;
- const da=direct?null:preferredDuct(a),db=direct?null:preferredDuct(b);
+ baseCollision.checkpoint=checkpoint;
+ for(const info of [a,b]){const panel=info.c.root.parent;if(panel?.userData.operationPanel)info.panelFrame=world.matrixWorld.clone().invert().multiply(panel.matrixWorld);}
+ const direct=panelSide(a,context)&&panelSide(b,context);
+ let collision=direct?panelCollision(world,components,baseCollision,context):baseCollision;
+ if(!direct&&!ducts.length)throw new Error('盤內接線需要可用線槽，此配置沒有線槽');
+ if(!direct&&context.board&&!a.c.root.parent?.userData.operationPanel&&!b.c.root.parent?.userData.operationPanel){
+  const bounds=context.board,original=collision,bounded=Object.create(collision);
+  const inside=p=>p[0]>=-1e-6&&p[0]<=bounds.width+1e-6&&p[2]>=-1e-6&&p[2]<=bounds.depth+1e-6;
+  bounded.clear=(a,b=a)=>inside(a)&&inside(b)&&original.clear(a,b);collision=bounded;
+ }
+ const da=direct?null:preferredDuct(a,ducts),db=direct?null:preferredDuct(b,ducts);
+ const chain=direct?[]:findDuctPath(ducts,ducts[da].id,ducts[db].id);
  // Stable lanes: keep all existing routes fixed; use free lateral / height slots.
- for(let attempt=0;attempt<9;attempt++){
-  const tier=wires.length+attempt,ductHeight=attempt<2?16+4*(tier%6)+Math.floor(tier/42)*28:48+4*tier,lane=[0,-4,4,-8,8,-12,12][tier%7];
+ for(let attempt=0;attempt<9;attempt++){checkpoint();
+  const tier=wires.length+attempt,ductHeight=(chain.length?Math.max(...chain.map(d=>d.y))-.5:0)+(attempt<2?16+4*(tier%6)+Math.floor(tier/42)*28:48+4*tier);
+  const requestedLane=[0,-4,4,-8,8,-12,12][tier%7],limit=chain.length?Math.max(0,Math.min(...chain.map(d=>d.width/2-2))):12,lane=Math.max(-limit,Math.min(limit,requestedLane));
   // On fallback routes, stagger the two approaches so nearby endpoints do
   // not produce overlapping parallel legs at the same elevation.
   const heightA=Math.max(52,ductHeight+8,a.position[1]+16)+4*(tier%7)+8*attempt+(attempt>=2?8:0),heightB=Math.max(52,ductHeight+8,b.position[1]+16)+4*(tier%7)+8*attempt;
@@ -103,12 +130,12 @@ export function routeWire(world,components,from,to,wires=[]){
   const ga=ductPoint(ducts[da],ea.at(-1),lane,ductHeight),gb=ductPoint(ducts[db],eb.at(-1),lane,ductHeight);
   if(da===db&&distance(ga,gb)<8){const axis=ducts[db].rotation===90?0:2;gb[axis]+=gb[axis]>ductPoint(ducts[db],[400,0,320])[axis]?-8:8;const cross=axis===0?2:0;gb[cross]+=lane>0?-8:8;}
   const anchors=[ea.at(-1),[ga[0],heightA,ga[2]],ga];
-  if(da!==db){if(da!==3)anchors.push([ga[0],ductHeight,ducts[3].z+lane]);if(db!==3)anchors.push([gb[0],ductHeight,ducts[3].z+lane]);}
+  anchors.push(...ductJunctions(chain,lane,ductHeight));
   anchors.push(gb,[gb[0],heightB,gb[2]],eb.at(-1));
   let path=[...ea],okay=true;
   for(let i=1;i<anchors.length;i++){const segment=join(anchors[i-1],anchors[i],collision);if(!segment){okay=false;break;}path.push(...segment.slice(1));}
   if(!okay)continue;path.push(...[...eb].reverse().slice(1));path=compact(path).map(p=>p.map(round));
-  if(collision.validate(path)&&validateSelf(path))return {from:{...from},to:{...to},points:path,viaDucts:da===db?[da]:[da,...(da!==3&&db!==3?[3]:[]),db],radius:1};
+  if(collision.validate(path)&&validateSelf(path))return {from:{...from},to:{...to},points:path,viaDucts:chain.map(d=>d.tag??d.id),radius:1};
  }
  throw new Error('找不到同時避開元件與其他電線的路徑，請調整接線順序或移除附近電線後重試');
 }

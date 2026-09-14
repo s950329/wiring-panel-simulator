@@ -1,0 +1,173 @@
+{
+  "format": "wiring-panel-project",
+  "schemaVersion": 1,
+  "name": "雙組接觸器與獨立電源",
+  "configuration": {
+    "units": {
+      "position": "scene-units",
+      "rotation": "degrees"
+    },
+    "board": {
+      "id": "base",
+      "width": 1000,
+      "depth": 800,
+      "thickness": 7
+    },
+    "operationPanel": null,
+    "rails": [],
+    "ducts": [],
+    "components": [
+      {
+        "id": "coil",
+        "definitionId": "shihlin-sp16",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "base",
+          "position": [
+            350,
+            7,
+            180
+          ],
+          "rotationY": -90
+        }
+      },
+      {
+        "id": "aux",
+        "definitionId": "shihlin-ap22",
+        "definitionVersion": 1,
+        "placement": {
+          "assemblyId": "drive",
+          "slot": "auxiliary"
+        }
+      },
+      {
+        "id": "thermal",
+        "definitionId": "shihlin-th20",
+        "definitionVersion": 1,
+        "placement": {
+          "assemblyId": "drive",
+          "slot": "overload"
+        },
+        "parameters": {
+          "current": 15
+        },
+        "state": {
+          "trip": false
+        }
+      },
+      {
+        "id": "coil-B",
+        "definitionId": "shihlin-sp16",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "base",
+          "position": [
+            720,
+            7,
+            420
+          ],
+          "rotationY": 90
+        }
+      },
+      {
+        "id": "aux-B",
+        "definitionId": "shihlin-ap22",
+        "definitionVersion": 1,
+        "placement": {
+          "assemblyId": "drive-B",
+          "slot": "auxiliary"
+        }
+      },
+      {
+        "id": "thermal-B",
+        "definitionId": "shihlin-th20",
+        "definitionVersion": 1,
+        "placement": {
+          "assemblyId": "drive-B",
+          "slot": "overload"
+        },
+        "parameters": {
+          "current": 15
+        },
+        "state": {
+          "trip": false
+        }
+      },
+      {
+        "id": "source",
+        "definitionId": "teaching-source",
+        "definitionVersion": 1,
+        "placement": null,
+        "parameters": {
+          "enabled": true
+        }
+      },
+      {
+        "id": "source-B",
+        "definitionId": "teaching-source",
+        "definitionVersion": 1,
+        "placement": null,
+        "parameters": {
+          "enabled": false
+        }
+      }
+    ],
+    "assemblies": [
+      {
+        "id": "drive",
+        "definitionId": "shihlin-sp16-accessories",
+        "definitionVersion": 1,
+        "hostId": "coil"
+      },
+      {
+        "id": "drive-B",
+        "definitionId": "shihlin-sp16-accessories",
+        "definitionVersion": 1,
+        "hostId": "coil-B"
+      }
+    ],
+    "panelGateway": null
+  },
+  "connections": [
+    {
+      "from": {
+        "component": "source",
+        "terminal": "L"
+      },
+      "to": {
+        "component": "coil",
+        "terminal": "A1"
+      }
+    },
+    {
+      "from": {
+        "component": "source",
+        "terminal": "N"
+      },
+      "to": {
+        "component": "coil",
+        "terminal": "A2"
+      }
+    },
+    {
+      "from": {
+        "component": "source-B",
+        "terminal": "L"
+      },
+      "to": {
+        "component": "coil-B",
+        "terminal": "A1"
+      }
+    },
+    {
+      "from": {
+        "component": "source-B",
+        "terminal": "N"
+      },
+      "to": {
+        "component": "coil-B",
+        "terminal": "A2"
+      }
+    }
+  ]
+}

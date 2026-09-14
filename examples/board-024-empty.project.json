@@ -1,0 +1,492 @@
+{
+  "format": "wiring-panel-project",
+  "schemaVersion": 1,
+  "name": "BOARD 024",
+  "configuration": {
+    "units": {
+      "position": "scene-units",
+      "rotation": "degrees"
+    },
+    "board": {
+      "id": "baseplate",
+      "width": 800,
+      "depth": 640,
+      "thickness": 7
+    },
+    "operationPanel": {
+      "id": "operation-panel",
+      "definitionId": "hinged-operation-panel",
+      "definitionVersion": 1,
+      "position": [
+        400,
+        52,
+        637
+      ],
+      "rotationY": 0,
+      "width": 792,
+      "depth": 85,
+      "thickness": 2.5,
+      "skirtHeight": 35,
+      "state": {
+        "open": false
+      }
+    },
+    "rails": [
+      {
+        "id": "rail-1",
+        "mountId": "baseplate",
+        "position": [
+          72,
+          0.5,
+          273
+        ],
+        "rotationY": 0,
+        "length": 241,
+        "width": 37
+      },
+      {
+        "id": "rail-2",
+        "mountId": "baseplate",
+        "position": [
+          440,
+          0.5,
+          517
+        ],
+        "rotationY": 90,
+        "length": 747,
+        "width": 38
+      },
+      {
+        "id": "rail-3",
+        "mountId": "baseplate",
+        "position": [
+          360,
+          0.5,
+          228
+        ],
+        "rotationY": 0,
+        "length": 371,
+        "width": 37
+      },
+      {
+        "id": "rail-4",
+        "mountId": "baseplate",
+        "position": [
+          636,
+          0.5,
+          274
+        ],
+        "rotationY": 0,
+        "length": 320,
+        "width": 37
+      }
+    ],
+    "ducts": [
+      {
+        "id": "duct-1",
+        "mountId": "baseplate",
+        "position": [
+          212,
+          0.5,
+          218
+        ],
+        "rotationY": 0,
+        "length": 410,
+        "width": 43
+      },
+      {
+        "id": "duct-2",
+        "mountId": "baseplate",
+        "position": [
+          501,
+          0.5,
+          208
+        ],
+        "rotationY": 0,
+        "length": 416,
+        "width": 43
+      },
+      {
+        "id": "duct-3",
+        "mountId": "baseplate",
+        "position": [
+          780,
+          0.5,
+          282
+        ],
+        "rotationY": 0,
+        "length": 270,
+        "width": 37
+      },
+      {
+        "id": "duct-4",
+        "mountId": "baseplate",
+        "position": [
+          416,
+          0.5,
+          435
+        ],
+        "rotationY": 90,
+        "length": 760,
+        "width": 47
+      }
+    ],
+    "components": [
+      {
+        "id": "QF1",
+        "definitionId": "shihlin-t20",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "baseplate",
+          "position": [
+            732,
+            7,
+            70
+          ],
+          "rotationY": -90
+        },
+        "state": {
+          "on": false
+        }
+      },
+      {
+        "id": "FU1",
+        "definitionId": "twin-fuse-holder",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "baseplate",
+          "position": [
+            636,
+            7,
+            174
+          ],
+          "rotationY": -90
+        },
+        "state": {
+          "open": false
+        }
+      },
+      {
+        "id": "MC1",
+        "definitionId": "shihlin-sp16",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "baseplate",
+          "position": [
+            356,
+            7,
+            86
+          ],
+          "rotationY": -90
+        }
+      },
+      {
+        "id": "AP1",
+        "definitionId": "shihlin-ap22",
+        "definitionVersion": 1,
+        "placement": {
+          "assemblyId": "drive-assembly",
+          "slot": "auxiliary"
+        }
+      },
+      {
+        "id": "TH1",
+        "definitionId": "shihlin-th20",
+        "definitionVersion": 1,
+        "placement": {
+          "assemblyId": "drive-assembly",
+          "slot": "overload"
+        },
+        "parameters": {
+          "current": 15
+        },
+        "state": {
+          "trip": false
+        }
+      },
+      {
+        "id": "SO1",
+        "definitionId": "omron-p2cf11",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "baseplate",
+          "position": [
+            352,
+            7,
+            178
+          ],
+          "rotationY": -90
+        }
+      },
+      {
+        "id": "MC2",
+        "definitionId": "shihlin-sc21l",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "baseplate",
+          "position": [
+            356,
+            7,
+            258
+          ],
+          "rotationY": -90
+        }
+      },
+      {
+        "id": "MC3",
+        "definitionId": "cn18",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "baseplate",
+          "position": [
+            360,
+            7,
+            352
+          ],
+          "rotationY": -90
+        }
+      },
+      {
+        "id": "TB1",
+        "definitionId": "terminal-strip-46",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "baseplate",
+          "position": [
+            440,
+            7,
+            517
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "TB2",
+        "definitionId": "terminal-strip-13",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "baseplate",
+          "position": [
+            72,
+            7,
+            273
+          ],
+          "rotationY": 90
+        }
+      },
+      {
+        "id": "BZ1",
+        "definitionId": "koino-buzzer",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            -346,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "ES1",
+        "definitionId": "emergency-red",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            -283,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        },
+        "state": {
+          "latched": false
+        }
+      },
+      {
+        "id": "SA1",
+        "definitionId": "selector-three-position",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            -220,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        },
+        "state": {
+          "position": 1
+        }
+      },
+      {
+        "id": "PB1",
+        "definitionId": "button-yellow",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            -157,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "PB2",
+        "definitionId": "button-teal",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            -94,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "PB3",
+        "definitionId": "button-green",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            -31,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "PB4",
+        "definitionId": "button-red-sticker",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            32,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "PB5",
+        "definitionId": "button-red",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            95,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "HL1",
+        "definitionId": "lamp-white",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            158,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "HL2",
+        "definitionId": "lamp-yellow",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            221,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "HL3",
+        "definitionId": "lamp-red",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            284,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "HL4",
+        "definitionId": "lamp-green",
+        "definitionVersion": 1,
+        "placement": {
+          "mountId": "operation-panel",
+          "position": [
+            347,
+            2,
+            -32
+          ],
+          "rotationY": 0
+        }
+      },
+      {
+        "id": "CONTROL",
+        "definitionId": "teaching-source",
+        "definitionVersion": 1,
+        "placement": null,
+        "parameters": {
+          "enabled": true
+        }
+      },
+      {
+        "id": "MAIN",
+        "definitionId": "teaching-three-phase-source",
+        "definitionVersion": 1,
+        "placement": null,
+        "parameters": {
+          "enabled": true
+        }
+      },
+      {
+        "id": "M1",
+        "definitionId": "teaching-motor",
+        "definitionVersion": 1,
+        "placement": null
+      }
+    ],
+    "assemblies": [
+      {
+        "id": "drive-assembly",
+        "definitionId": "shihlin-sp16-accessories",
+        "definitionVersion": 1,
+        "hostId": "MC1"
+      }
+    ],
+    "panelGateway": {
+      "panelId": "operation-panel",
+      "component": "TB1",
+      "boardSide": "A",
+      "panelSide": "B"
+    }
+  },
+  "connections": []
+}
