@@ -14,6 +14,7 @@ OUT.mkdir(exist_ok=True)
 checks = []
 errors = []
 console = []
+capture_warnings = []
 
 
 def check(ok, label):
@@ -37,23 +38,41 @@ def energized(page, component, value):
     page.wait_for_function("([id,value])=>window.wiringLab.getSimulation().result?.evaluation?.loads.some(x=>x.component===id && (x.state==='energized')===value)", arg=[component, value], polling=100, timeout=10000)
 
 
-def press(page, component, assertion):
-    page.locator('#component-select').select_option(component)
-    button = page.locator('#details .actions button').filter(has_text='按住手動壓合')
-    # Keep the real hit-test and pointer events. SwiftShader can delay animation
-    # frames, so scrolling a static HTML control does not depend on a RAF-based
-    # stability wait. A hidden, disabled, covered or zero-size button still fails.
+def pointer_target(button):
+    # Independent DOM geometry/hit checks retain real pointer semantics without
+    # requiring a stable WebGL animation frame for a static HTML control.
     box = button.evaluate('''el=>{el.scrollIntoView({block:'center',behavior:'instant'});
       const r=el.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;
       return {x:r.x,y:r.y,width:r.width,height:r.height,enabled:!el.disabled,
         hit:el.contains(document.elementFromPoint(x,y))};}''')
     assert box['enabled'] and box['hit'] and box['width'] > 0 and box['height'] > 0, box
-    page.mouse.move(box['x'] + box['width']/2, box['y'] + box['height']/2)
+    return box['x'] + box['width']/2, box['y'] + box['height']/2
+
+
+def click(page, button):
+    page.mouse.click(*pointer_target(button))
+
+
+def press(page, component, assertion):
+    page.locator('#component-select').select_option(component)
+    button = page.locator('#details .actions button').filter(has_text='按住手動壓合')
+    page.mouse.move(*pointer_target(button))
     page.mouse.down()
     try:
         assertion()
     finally:
         page.mouse.up()
+
+
+def capture(page, name):
+    # Capturing a software-rendered frame must not prevent the remaining
+    # functional checks from running. A timeout is recorded, never called a pass.
+    try:
+        page.screenshot(path=str(OUT / name), full_page=False, timeout=10000)
+    except Exception as error:
+        capture_warnings.append({'file': name, 'error': str(error)})
+        print('CAPTURE WARNING:', name, str(error), flush=True)
+        (OUT / 'capture-warnings.json').write_text(json.dumps(capture_warnings, indent=2))
 
 
 def run(browser, page):
@@ -63,7 +82,7 @@ def run(browser, page):
     check(page.locator('#component-select option').count() == 22, 'default 22 components')
     load(page, 'a04-motor-start.project.json')
     check(page.evaluate('window.wiringLab.getWires().length') == 26, 'A04 native route import')
-    page.locator('[data-sim-start]').click()
+    click(page, page.locator('[data-sim-start]'))
     energized(page, 'MC1', False)
     press(page, 'PB3', lambda: energized(page, 'MC1', True))
     energized(page, 'MC1', True)
@@ -73,25 +92,25 @@ def run(browser, page):
     check(True, 'stop button')
     press(page, 'PB3', lambda: energized(page, 'MC1', True))
     page.locator('#component-select').select_option('TH1')
-    page.locator('#details button').filter(has_text='TEST').click()
+    click(page, page.locator('#details button').filter(has_text='TEST'))
     energized(page, 'MC1', False)
     energized(page, 'HL3', True)
     energized(page, 'BZ1', True)
     check(True, 'overload, red lamp and buzzer')
-    page.locator('#details button').filter(has_text='RESET').click()
+    click(page, page.locator('#details button').filter(has_text='RESET'))
     energized(page, 'MC1', False)
     energized(page, 'HL3', False)
     check(True, 'RESET does not restart')
-    page.screenshot(path=str(OUT / 'a04-loaded.png'), full_page=True)
-    page.locator('[data-sim-stop]').click()
+    capture(page, 'a04-loaded.png')
+    click(page, page.locator('[data-sim-stop]'))
     for _ in range(2):
-        page.locator('#flap-btn').click()
+        click(page, page.locator('#flap-btn'))
         assert page.evaluate('window.wiringLab.getProject().configuration.operationPanel.state.open')
-        page.locator('#flap-btn').click()
+        click(page, page.locator('#flap-btn'))
         assert not page.evaluate('window.wiringLab.getProject().configuration.operationPanel.state.open')
     check(True, 'two panel open-close cycles')
     with page.expect_download() as download:
-        page.locator('[data-project-export]').click()
+        click(page, page.locator('[data-project-export]'))
     target = OUT / 'browser-export.project.json'
     download.value.save_as(target)
     exported = json.loads(target.read_text())
@@ -99,26 +118,27 @@ def run(browser, page):
     load(page, 'custom-panel-less.project.json')
     check(page.locator('#component-select option').count() == 2 and page.locator('.equipment-card').count() == 0 and page.locator('#flap-btn').is_hidden(), 'different layout replaces old project')
     page.locator('#component-select').select_option('coil')
-    page.locator('#inspect-component').click()
+    click(page, page.locator('#inspect-component'))
     assert '返回' in page.locator('#inspect-component').inner_text()
-    page.locator('#inspect-component').click()
+    click(page, page.locator('#inspect-component'))
     check(True, 'generic component inspection')
     before = page.evaluate('window.wiringLab.getProject()')
     page.locator('[data-project-file]').set_input_files(ROOT / 'examples/a04-motor-start.project.json')
     page.wait_for_function("document.querySelector('[data-project-status]').textContent.includes('自動走線')", polling=100, timeout=30000)
-    page.locator('[data-project-cancel]').click()
+    click(page, page.locator('[data-project-cancel]'))
     page.wait_for_function("document.querySelector('[data-project-status]').textContent.includes('取消') && !document.querySelector('[data-project-import]').disabled", polling=100, timeout=30000)
     check(page.evaluate('window.wiringLab.getProject()') == before, 'cancel preserves previous project')
     load(page, 'independent-drives.project.json')
     assert page.locator('.equipment-card').count() == 2
-    page.locator('[data-sim-start]').click()
+    click(page, page.locator('[data-sim-start]'))
     energized(page, 'coil', True)
     energized(page, 'coil-B', False)
-    page.locator('[data-source="source-B"]').check()
+    click(page, page.locator('[data-source="source-B"]'))
+    assert page.locator('[data-source="source-B"]').is_checked()
     energized(page, 'coil-B', True)
     check(True, 'independent source switches')
-    page.locator('[data-sim-stop]').click()
-    page.locator('#reset-project').click()
+    click(page, page.locator('[data-sim-stop]'))
+    click(page, page.locator('#reset-project'))
     page.wait_for_function("window.wiringLab.getProject().name==='BOARD 024' && document.querySelector('#component-select').options.length===22", polling=100)
     check(page.evaluate('window.wiringLab.getWires().length') == 0, 'reset to default')
     page.close()
@@ -148,12 +168,12 @@ with sync_playwright() as playwright:
         if not page.is_closed():
             try:
                 details['ui'] = page.evaluate("({status:document.querySelector('[data-project-status]')?.textContent, selection:document.querySelector('#component-select')?.value, inspector:document.querySelector('#details')?.innerText})")
-                page.screenshot(path=str(OUT / 'browser-failure.png'), timeout=15000)
+                capture(page, 'browser-failure.png')
             except Exception as capture_error:
                 details['captureError'] = str(capture_error)
         (OUT / 'browser-failure.json').write_text(json.dumps(details, ensure_ascii=False, indent=2))
         raise
     finally:
         browser.close()
-(OUT / 'browser-results.json').write_text(json.dumps({'status': 'passed', 'checks': checks, 'pageErrors': errors}, ensure_ascii=False, indent=2))
+(OUT / 'browser-results.json').write_text(json.dumps({'status': 'passed', 'checks': checks, 'pageErrors': errors, 'captureWarnings': capture_warnings}, ensure_ascii=False, indent=2))
 print('PASS: browser acceptance and standalone entries', flush=True)
