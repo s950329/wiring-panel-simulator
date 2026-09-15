@@ -15,7 +15,7 @@ function fixture(angle=0,obstacles=[]){
   const x=toLocal(a),y=toLocal(b);return inside(x)&&inside(y)&&obstacles.every(box=>!segmentBox(x,y,box));
  },validate(points){return points.slice(1).every((p,i)=>this.clear(points[i],p));}};
  const from=toWorld([-16.234567,bounds.max[1],-10.112233]),to=toWorld([16.543219,bounds.max[1],10.667788]);
- return {from,to,options:{toLocal,toWorld,collision,validateSelf,bounds,maxMs:2000},diagnostics:{}};
+ return {from,to,options:{toLocal,toWorld,collision,validateSelf,bounds},diagnostics:{}};
 }
 
 test('grid preserves fractional anchors on an exact backside boundary in both rotated poses',()=>{
@@ -52,4 +52,24 @@ test('grid cancellation propagates at entry, after graph construction, and durin
    checkpoint:()=>{if(++calls===stopAt)throw cancelled;}}),error=>error===cancelled);
   assert.equal(calls,stopAt);assert.equal(JSON.stringify([f.from,f.to]),before);
  }
+});
+
+
+test('default grid work and alternatives are unchanged by slower elapsed time below the operation deadline',()=>{
+ const clock=Date.now;
+ try{
+  for(const variant of [0,3]){
+   const run=step=>{
+    let ticks=0;Date.now=()=>ticks++*step;
+    const f=fixture(0,[{min:[-2.987654,bounds.min[1],-4.432198],max:[3.456789,bounds.max[1],4.654321]}]);
+    const points=backsideGrid({anchors:[f.from]},{anchors:[f.to]},{...f.options,variant,diagnostics:f.diagnostics,
+      checkpoint:()=>assert.ok(ticks*step<20000,'the shared operation deadline remains available')});
+    assert.ok(points,`variant ${variant} at ${step} ms per clock read should complete the same bounded work`);
+    assert.ok(f.options.collision.validate(points));assert.ok(validateSelf(points));
+    const {status,expanded,nodes,checks}=f.diagnostics;
+    return {points,status,expanded,nodes,checks};
+   };
+   assert.deepEqual(run(600),run(0),'elapsed time must not change the default search frontier or selected alternative');
+  }
+ }finally{Date.now=clock;}
 });

@@ -10,6 +10,7 @@ import {defaultProject} from '../src/project/default-project.ts';
 import {collectSolids} from '../src/wiring/solids.js';
 import {CollisionWorld} from '../src/wiring/collision.js';
 import {describeTerminal, routeWire, validateSelf} from '../src/wiring/router.js';
+import {WiringController} from '../src/wiring/controller.js';
 globalThis.document ??= {createElement: () => ({getContext: () => ({fillRect() {}, strokeRect() {}, fillText() {}})})};
 
 const endpoint = (component, terminal) => ({component, terminal});
@@ -115,7 +116,17 @@ for (const [name, source] of [['uploaded-11', uploaded], ['classroom-22', classr
       poses(runtime, `${name}/reconnected`);
       runtime.movePanel(false);
       const exported = runtime.exportProject();
-      ({runtime: restored} = await buildProject(JSON.stringify(exported)));
+      const rebuildPlans=[],originalPlan=WiringController.prototype.plan;
+      // Observe real planning calls during the exact CI round trip. No solver,
+      // collision result, deadline, or route is replaced by the test.
+      WiringController.prototype.plan=function(...args){const result=originalPlan.apply(this,args);rebuildPlans.push(result.diagnostics);return result;};
+      try{({runtime: restored} = await buildProject(JSON.stringify(exported)));}
+      finally{WiringController.prototype.plan=originalPlan;}
+      if(name==='R8-full-23'){
+        const budgetPlan=rebuildPlans.find(plan=>plan.failures[0]?.code==='ROUTE_SEARCH_LIMIT');
+        assert.ok(budgetPlan,'the CI fixture must exercise a full local search budget');
+        assert.ok(budgetPlan.attempts<=3,'a spent local search budget must promptly try a different whole-group ordering');
+      }
       assert.deepEqual(restored.exportProject(), exported);
       geometry(restored, `${name}/restored-closed`);
       poses(restored, `${name}/restored`);

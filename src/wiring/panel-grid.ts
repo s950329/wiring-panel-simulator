@@ -3,7 +3,7 @@ import type {MutablePoint,PanelRouteOptions,Point,TerminalAnchors} from './panel
 type Index=[number,number,number];
 interface Node {indices:Index;key:number;p:MutablePoint;g:number;f:number;parent:Node|null;axis:number}
 export interface GridDiagnostic {status:'found'|'budget'|'exhausted';expanded:number;frontier:number;limit:number;ms:number;nodes:number;checks:number}
-export interface GridRouteOptions extends PanelRouteOptions {maxMs?:number;limit?:number;diagnostics?:Partial<GridDiagnostic>}
+export interface GridRouteOptions extends PanelRouteOptions {limit?:number;diagnostics?:Partial<GridDiagnostic>}
 const distance=(a:Point,b:Point)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
 const round=(x:number)=>Math.round(x*1000)/1000;
 const unique=(values:number[])=>[...new Set(values)].sort((a,b)=>a-b);
@@ -26,7 +26,7 @@ class Heap {
  * A bounded weighted A* deliberately trades global optimality for responsive routing.
  */
 export function backsideGrid(a:TerminalAnchors,b:TerminalAnchors,{
- toLocal,toWorld,collision,validateSelf,bounds,checkpoint=()=>{},maxMs=450,limit=10000,variant=0,diagnostics
+ toLocal,toWorld,collision,validateSelf,bounds,checkpoint=()=>{},limit=10000,variant=0,diagnostics
 }:GridRouteOptions):MutablePoint[]|null{
  checkpoint();const startTime=Date.now();
  const record=(status:GridDiagnostic['status'],expanded:number,frontier:number,nodes:number,checks:number)=>{
@@ -59,7 +59,9 @@ export function backsideGrid(a:TerminalAnchors,b:TerminalAnchors,{
  // ranking later discoveries cannot offer that same route as a retry variant.
  const select=()=>{const alternatives=found.slice(1).sort((a,b)=>a.cost-b.cost);record('found',expanded,heap.a.length,best.size,edgeCache.size);return rank===0||!alternatives.length?found[0].points:alternatives[Math.min(rank-1,alternatives.length-1)].points;};
  while(heap.a.length&&expanded<limit){
-  if(expanded%64===0){checkpoint();if(Date.now()-startTime>maxMs)break;}expanded++;
+  // Local alternatives use a fixed work budget. The caller owns the total
+  // operation deadline; a machine-speed cutoff here would change later routes.
+  if(expanded%64===0)checkpoint();expanded++;
   const n=heap.pop();if(n.g>best.get(`${n.key}:${n.axis}`)!)continue;
   if(targetKeys.has(n.key)){
    const local:MutablePoint[]=[];for(let q:Node|null=n;q;q=q.parent)local.push(q.p);const points=compact(local.reverse()).map(toWorld);

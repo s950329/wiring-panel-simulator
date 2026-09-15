@@ -79,6 +79,11 @@ export function planRoutes(world:Group,components:ReadonlyMap<string,ComponentRu
    return{routes:requests.map(w=>complete.get(w.id)!),diagnostics};
   }
   diagnostics.failures.push(failure);
+  // After spending a full local search budget, give a different whole-group
+  // ordering a turn before nearby variants consume the shared deadline.
+  // Exhausted candidate sets still use the cheaper local conflict repairs first.
+  if(diagnostics.attempts===1&&failure.code==='ROUTE_SEARCH_LIMIT')
+   enqueue({order:canonical,reroute:new Set(canonical),variants:new Map()});
   const failed=failure.wireId,index=state.order.indexOf(failed);
   const conflicts=failure.blockers.length?failure.blockers:state.order.slice(0,index);
   // Give the constrained exit its space first, then reroute the displaced wires.
