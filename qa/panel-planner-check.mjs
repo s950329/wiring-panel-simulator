@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {panelBacksideGeometry} from './helpers/panel-space-oracle.mjs';
 import {readFileSync} from 'node:fs';
 import * as T from 'three';
 import {createProjectRuntime} from '../src/project/runtime.ts';
@@ -34,6 +35,7 @@ function fresh(source) {
 }
 
 function geometry(runtime, label = '') {
+  panelBacksideGeometry(runtime,label);
   const solids = collectSolids(runtime.world), accepted = [];
   for (const wire of runtime.routing.wires) {
     assert.ok(validateSelf(wire.points), `${label}: ${wire.id} intersects itself`);

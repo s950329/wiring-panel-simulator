@@ -27,6 +27,7 @@ export function buildOperationPanel(world:T.Group,p:OperationPanel):T.Group{
   const flap=new T.Group();flap.name=p.id;flap.position.fromArray(p.position);flap.rotation.order='YXZ';flap.rotation.y=p.rotationY*Math.PI/180;
   flap.rotation.x=p.state.open?Math.PI:0;flap.userData.operationPanel=true;flap.userData.panelId=p.id;
   flap.userData.routingRearZ=-p.depth;world.add(flap);
+  flap.userData.routingPanel={width:p.width,depth:p.depth,thickness:p.thickness,skirtHeight:p.skirtHeight};
   const z=-p.depth/2+2.5, sideX=p.width/2-1, wallY=-(p.skirtHeight/2-1.5);
   box(flap,p.width,p.thickness,p.depth,0,0,z,mat.cream,Math.min(1,p.thickness/2,p.width/4,p.depth/4));
   box(flap,p.width,p.skirtHeight,p.thickness,0,wallY,1,mat.cream,Math.min(1,p.thickness/2));

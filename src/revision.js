@@ -1,2 +1,2 @@
-export const MODEL_REVISION='WIRE-R17';
-export const MODEL_REVISION_LABEL='配線修訂 17 · 操作板雙姿勢走線';
+export const MODEL_REVISION='WIRE-R18';
+export const MODEL_REVISION_LABEL='配線修訂 18 · 操作板背面走線';

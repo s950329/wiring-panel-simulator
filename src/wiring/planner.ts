@@ -6,6 +6,7 @@ import {getRoutingContext,type RoutingContext} from './context.ts';
 import {routeWire,describeTerminal,validateSelf,panelSide,panelCollision} from './router.js';
 import {collectSolids} from './solids.js';
 import {CollisionWorld,distance} from './collision.js';
+import {createPanelRegion} from './panel-region.ts';
 
 const endpointKey=(e:Wire['from'])=>`${e.component}:${e.terminal}`;
 const wireKey=(w:Wire)=>[endpointKey(w.from),endpointKey(w.to)].sort().join('|');
@@ -27,7 +28,7 @@ export function planRoutes(world:Group,components:ReadonlyMap<string,ComponentRu
  const diagnostics:PlanDiagnostics={attempts:0,rerouted:[],failures:[]};
  const checkpoint=()=>{context.checkpoint?.();if(Date.now()>deadline)throw new RoutePlanError(diagnostics);};
  const searchContext={...context,checkpoint};
- const solids=collectSolids(world),byId=new Map(requests.map(w=>[w.id,w]));
+ const solids=collectSolids(world),byId=new Map(requests.map(w=>[w.id,w])),region=createPanelRegion(world,components,context);
  const previous=new Map(preferred.filter(w=>byId.has(w.id)&&wireKey(byId.get(w.id)!)===wireKey(w)).map(w=>[w.id,w]));
  const descriptors=new Map(requests.map(w=>[w.id,[describeTerminal(world,components,w.from),describeTerminal(world,components,w.to)] as const]));
  const physical=new CollisionWorld(solids);
@@ -39,7 +40,8 @@ export function planRoutes(world:Group,components:ReadonlyMap<string,ComponentRu
   if(!a.anchors.some(p=>distance(p,wire.points[0])<.002)||!b.anchors.some(p=>distance(p,wire.points.at(-1)!)<.002))return false;
   const collision=new CollisionWorld(solids,accepted);
   if(!validateSelf(wire.points)||!collision.validate(wire.points))return false;
-  return !(panelSide(a,context)&&panelSide(b,context))||(!wire.viaDucts.length&&panelCollision(world,components,collision,context).validate(wire.points));
+  if(region&&[a,b].some(info=>info.c.root.parent===region.panel)&&!wire.points.slice(1).every((p,i)=>region.frontClear(wire.points[i],p)))return false;
+  return !(panelSide(a,context)&&panelSide(b,context))||(!wire.viaDucts.length&&panelCollision(world,components,collision,context,[a,b]).validate(wire.points));
  };
  const degrees=new Map<string,number>();
  for(const w of requests)for(const e of [w.from,w.to])degrees.set(endpointKey(e),(degrees.get(endpointKey(e))??0)+1);

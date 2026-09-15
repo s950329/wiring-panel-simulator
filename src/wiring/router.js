@@ -5,6 +5,9 @@ import {getRoutingContext} from './context.ts';
 import {findDuctPath,ductJunctions} from './duct-network.ts';
 import {CollisionWorld,distance,segmentDistance,segments} from './collision.js';
 import {collectSolids} from './solids.js';
+import {createPanelRegion,segmentInBoxes} from './panel-region.ts';
+import {backsideCandidates} from './panel-candidates.ts';
+import {backsideGrid} from './panel-grid.ts';
 const v=a=>new T.Vector3(...a), round=n=>Math.round(n*1000)/1000;
 const compact=points=>points.filter((p,i)=>!i||distance(p,points[i-1])>.01).filter((p,i,a)=>{if(!i||i===a.length-1)return true;const u=v(p).sub(v(a[i-1])).normalize(),w=v(a[i+1]).sub(v(p)).normalize();return u.dot(w)<.99999;});
 class Heap{
@@ -59,7 +62,7 @@ export function panelSide(info,context){
  const panelGateway=context.gateway;
  return !!info.c.root.parent?.userData.operationPanel||(panelGateway&&info.endpoint.component===panelGateway.component&&info.endpoint.terminal.endsWith(panelGateway.side));
 }
-export function panelCollision(world,components,collision,context){
+export function panelCollision(world,components,collision,context,endpoints){
  // A configured gateway defines the plate-facing half-space. Panel-only projects use the leaf's fixed rear edge.
  const gateway=context.gateway&&components.get(context.gateway.component)?.root;
  let matrix,origin,normal;
@@ -73,8 +76,10 @@ export function panelCollision(world,components,collision,context){
   matrix=new T.Matrix4().compose(panel.position,new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),panel.rotation.y),panel.scale);
   origin=new T.Vector3(0,0,panel.userData.routingRearZ).applyMatrix4(matrix);normal=new T.Vector3(0,0,1).transformDirection(matrix);
  }
- const allowed=p=>v(p).sub(origin).dot(normal)>=-1e-6;
- const bounded=Object.create(collision);bounded.clear=(a,b=a)=>allowed(a)&&allowed(b)&&collision.clear(a,b);
+ const allowed=p=>v(p).sub(origin).dot(normal)>=-1e-6,region=createPanelRegion(world,components,context);
+ const samePanel=region&&endpoints?.length===2&&endpoints.every(info=>info.c.root.parent===region.panel);
+ const bounded=Object.create(collision);bounded.region=region;bounded.samePanel=samePanel;
+ bounded.clear=(a,b=a)=>allowed(a)&&allowed(b)&&(!region||(region.clear(a,b)&&(!samePanel||segmentInBoxes(region.toLocal(a),region.toLocal(b),[region.leaf]))))&&collision.clear(a,b);
  return bounded;
 }
 
@@ -109,15 +114,30 @@ export function routeWire(world,components,from,to,wires=[],options,strategy={})
  baseCollision.checkpoint=checkpoint;baseCollision.searchDiagnostics=[];
  for(const info of [a,b]){const panel=info.c.root.parent;if(panel?.userData.operationPanel)info.panelFrame=world.matrixWorld.clone().invert().multiply(panel.matrixWorld);}
  const direct=panelSide(a,context)&&panelSide(b,context);
- let collision=direct?panelCollision(world,components,baseCollision,context):baseCollision;
+ let collision=direct?panelCollision(world,components,baseCollision,context,[a,b]):baseCollision;
+ if(!direct&&[a,b].some(info=>info.c.root.parent?.userData.operationPanel)){
+  const region=createPanelRegion(world,components,context),original=collision,bounded=Object.create(collision);
+  bounded.clear=(a,b=a)=>(!region||region.frontClear(a,b))&&original.clear(a,b);collision=bounded;
+ }
  if(!direct&&!ducts.length)throw new Error('盤內接線需要可用線槽，此配置沒有線槽');
  if(!direct&&context.board&&!a.c.root.parent?.userData.operationPanel&&!b.c.root.parent?.userData.operationPanel){
   const bounds=context.board,original=collision,bounded=Object.create(collision);
   const inside=p=>p[0]>=-1e-6&&p[0]<=bounds.width+1e-6&&p[2]>=-1e-6&&p[2]<=bounds.depth+1e-6;
   bounded.clear=(a,b=a)=>inside(a)&&inside(b)&&original.clear(a,b);collision=bounded;
  }
- const da=direct?null:preferredDuct(a,ducts),db=direct?null:preferredDuct(b,ducts);
- const chain=direct?[]:findDuctPath(ducts,ducts[da].id,ducts[db].id);
+ if(direct){
+  const region=collision.region;
+  if(!region)throw new Error('操作板側走線缺少操作板');
+  const candidateOptions={toLocal:region.toLocal,toWorld:region.toWorld,bounds:collision.samePanel?region.leaf:region.bounds,collision,validateSelf,variant:strategy.variant??0,checkpoint};
+  const points=backsideCandidates(a,b,candidateOptions)||backsideGrid(a,b,candidateOptions);
+  // Preserve transformed anchors and boundary coordinates at full precision.
+  // The same region and collision checks also validate cached and restored routes.
+  if(points&&collision.validate(points)&&validateSelf(points))return {from:{...from},to:{...to},points,viaDucts:[],radius:1};
+  const limited=baseCollision.searchDiagnostics.some(s=>s.status==='budget'),error=new Error(limited?'操作板背面走線搜尋已達計算上限，尚未找到可用路徑':'目前操作板背面候選路徑無法同時避開元件與其他電線');
+  error.code=limited?'ROUTE_SEARCH_LIMIT':'ROUTE_NOT_FOUND';error.blockers=[...baseCollision.blockingWireIds];error.searches=baseCollision.searchDiagnostics;throw error;
+ }
+ const da=preferredDuct(a,ducts),db=preferredDuct(b,ducts);
+ const chain=findDuctPath(ducts,ducts[da].id,ducts[db].id);
  // Candidate levels depend only on geometry near either terminal, never the
  // number of unrelated routes elsewhere in the cabinet.
  const localOccupancy=wires.filter(w=>segments(w.points).some(s=>[a,b].some(info=>segmentDistance(info.position,info.position,s.a,s.b)<88))).length;
@@ -129,15 +149,6 @@ export function routeWire(world,components,from,to,wires=[],options,strategy={})
   // not produce overlapping parallel legs at the same elevation.
   const heightA=Math.max(52,ductHeight+8,a.position[1]+16)+4*(tier%7)+8*attempt+(attempt>=2?8:0),heightB=Math.max(52,ductHeight+8,b.position[1]+16)+4*(tier%7)+8*attempt;
   const ea=escape(a,collision,heightA,variant+attempt),eb=escape(b,collision,heightB,variant+attempt);if(!ea||!eb)continue;
-  if(direct){
-   const complete=bridge=>compact([...ea,...bridge.slice(1),...[...eb].reverse().slice(1)]).map(p=>p.map(round));
-   // A clear bridge can still fold back along either terminal lead. Reject that
-   // candidate here so join tries its other turns before raising the route tier.
-   const bridge=join(ea.at(-1),eb.at(-1),collision,p=>validateSelf(complete(p)));if(!bridge)continue;
-   const path=complete(bridge);
-   if(collision.validate(path)&&validateSelf(path))return {from:{...from},to:{...to},points:path,viaDucts:[],radius:1};
-   continue;
-  }
   const ga=ductPoint(ducts[da],ea.at(-1),lane,ductHeight),gb=ductPoint(ducts[db],eb.at(-1),lane,ductHeight);
   if(da===db&&distance(ga,gb)<8){const axis=ducts[db].rotation===90?0:2;gb[axis]+=gb[axis]>ductPoint(ducts[db],[400,0,320])[axis]?-8:8;const cross=axis===0?2:0;gb[cross]+=lane>0?-8:8;}
   const anchors=[ea.at(-1),[ga[0],heightA,ga[2]],ga];
