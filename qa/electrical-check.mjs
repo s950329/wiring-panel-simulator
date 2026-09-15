@@ -35,8 +35,8 @@ test('teaching contacts have explicit truth tables and fuse integrity is indepen
   for (const active of [false, true]) {
     const r = buildNetlist(c, {inputs: {PB1: {pressed: active}, ES1: {latched: active},
       QF1: {on: active}, FU1: {f1Intact: active}, TH1: {tripped: active}}});
-    assert.equal(same(r, 'PB1', '1', '2'), active);
-    assert.equal(same(r, 'PB1', '3', '4'), !active);
+    assert.equal(same(r, 'PB1', '2', '3'), active);
+    assert.equal(same(r, 'PB1', '1', '4'), !active);
     assert.equal(same(r, 'ES1', '1', '2'), !active);
     for (let i = 1; i <= 3; i++) assert.equal(same(r, 'QF1', `L${i}`, `T${i}`), active);
     assert.equal(same(r, 'FU1', 'F1-IN', 'F1-OUT'), active);
@@ -133,7 +133,7 @@ test('invalid endpoints and connected missing models fail without mutating the c
   const before = structuredClone(bad), r = result(bad, pressed);
   assert.equal(r.status, 'unknown'); assert.ok(has(r, 'MISSING_MODEL')); assert.deepEqual(bad, before);
   assert.ok(has(result({...c, wires: [...c.wires, wire('bad', ['PB1', '13'], ['MC1', 'A1'])]}, pressed), 'INVALID_ENDPOINT'));
-  assert.ok(has(result({...c, wires: [...c.wires, wire('side', ['MC1', 'L-B-U'], ['PB1', '1'])]}, pressed), 'MISSING_MODEL'));
+  assert.ok(has(result({...c, components: [...c.components, component('UNVERIFIED', 'cn18')], wires: [...c.wires, wire('unverified', ['UNVERIFIED', '21NC'], ['PB1', '3'])]}, pressed), 'MISSING_MODEL'));
   assert.ok(has(result({...c, components: [...c.components, c.components[0]]}, pressed), 'DUPLICATE_ID'));
 });
 

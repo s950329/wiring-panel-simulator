@@ -17,7 +17,8 @@ function model(partial: Partial<ElectricalModel> = {}): ElectricalModel {
 }
 const button: Definition = {terminals: ['1', '2', '3', '4'], model: model({
   inputs: {pressed: booleanInput(false)},
-  contacts: [inputContact('NO', '1', '2', 'pressed', true), inputContact('NC', '3', '4', 'pressed', false)]})};
+  // Classroom mounting: with the panel open and view reset, 2/3 are left (NO), 1/4 right (NC).
+  contacts: [inputContact('NO', '2', '3', 'pressed', true), inputContact('NC', '1', '4', 'pressed', false)]})};
 const strip = (count: number): Definition => ({
   terminals: Array.from({length: count}, (_, i) => [`${i + 1}A`, `${i + 1}B`]).flat(),
   model: model({fixed: Array.from({length: count}, (_, i) => link(`slot-${i + 1}`, `${i + 1}A`, `${i + 1}B`))})});
@@ -29,8 +30,11 @@ const definitions: Record<string, Definition> = {
   'teaching-motor': {terminals: ['U', 'V', 'W'], model: model({
     motors: [{id: 'motor', terminals: ['U', 'V', 'W'], profile: THREE_PHASE_PROFILE}]})},
   'shihlin-sp16': {terminals: ['1L1', '3L2', '5L3', '2T1', '4T2', '6T3', ...sides, 'A1', 'A2'],
-    model: model({unsupportedTerminals: sides, loads: [load('coil', 'A1', 'A2', 'coil')],
-      contacts: [coilContact('main-1', '1L1', '2T1'), coilContact('main-2', '3L2', '4T2'), coilContact('main-3', '5L3', '6T3')]})},
+    // This photographed classroom asset includes an APS-11 on each side; each is 1NO + 1NC.
+    model: model({loads: [load('coil', 'A1', 'A2', 'coil')],
+      contacts: [coilContact('main-1', '1L1', '2T1'), coilContact('main-2', '3L2', '4T2'), coilContact('main-3', '5L3', '6T3'),
+        coilContact('APS-L-NO', 'L-B-L', 'L-F-L'), coilContact('APS-L-NC', 'L-B-U', 'L-F-U', false),
+        coilContact('APS-R-NO', 'R-B-L', 'R-F-L'), coilContact('APS-R-NC', 'R-B-U', 'R-F-U', false)]})},
   'shihlin-ap22': {terminals: ['53', '61', '71', '83', '54', '62', '72', '84'], model: model({contacts: [
     coilContact('NO-1', '53', '54', true, 'parent'), coilContact('NC-1', '61', '62', false, 'parent'),
     coilContact('NC-2', '71', '72', false, 'parent'), coilContact('NO-2', '83', '84', true, 'parent')]})},
@@ -72,7 +76,7 @@ export function minimalControlCircuit(): Circuit {
       createTeachingComponent({id: 'PB1', definitionId: 'button-yellow'}),
       createTeachingComponent({id: 'MC1', definitionId: 'shihlin-sp16'})],
     wires: [
-      {id: 'feed', from: {component: 'SUPPLY', terminal: 'L'}, to: {component: 'PB1', terminal: '1'}},
+      {id: 'feed', from: {component: 'SUPPLY', terminal: 'L'}, to: {component: 'PB1', terminal: '3'}},
       {id: 'start', from: {component: 'PB1', terminal: '2'}, to: {component: 'MC1', terminal: 'A1'}},
       {id: 'return', from: {component: 'MC1', terminal: 'A2'}, to: {component: 'SUPPLY', terminal: 'N'}},
     ],

@@ -1,6 +1,6 @@
 # 電性資料與教學配置
 
-核對日期：2026-09-13。實作範圍：Phase 0–4；WIRE-R7 已接入送電操作及原因追查。最終瀏覽器驗收另見測試記錄，不能由 Node 測試替代。
+核對日期：2026-09-15。實作範圍：Phase 0–4；WIRE-R7 已接入送電操作及原因追查。最終瀏覽器驗收另見測試記錄，不能由 Node 測試替代。
 
 ## teaching-control-v1
 
@@ -15,10 +15,10 @@
 | 實例／型號 | 穩定端子與本 profile 的關係 | 依據與限制 |
 |---|---|---|
 | MC1／S-P16 | `1L1–2T1`、`3L2–4T2`、`5L3–6T3` 隨明確 coil snapshot 閉合；`A1–A2` 為線圈負載 | [原廠 S-P16 圖面](https://global.seec.com.tw/Templates/att/S-P16_P21_P25_E.pdf?lng=en)支持三主極與 A1/A2；現有照片中 A1/A2 辨識紀錄在 `src/models/mc1.js`。實物版本、額定值未確認，程式仍為教學模型。 |
-| MC1 側翼 | `L-B-U/L-B-L/L-F-U/L-F-L/R-B-U/R-B-L/R-F-U/R-F-L` 均未支援 | 原廠圖面有 13–14 NO、21–22 NC，但不能據此把現有八個位置 ID 對上四個原廠編號。上下螺絲是否同點不猜測；任何一端被接入電路即 `MISSING_MODEL`。 |
+| MC1 左右 APS-11 | 每側 `*-B-L–*-F-L` 為 NO，`*-B-U–*-F-U` 為 NC；隨自身 MC1 coil snapshot 切換，四組各自隔離 | 原始近照標示 APS-11；[士林原廠規格](https://global.seec.com.tw/en/product/4604.html)為每側 1NO+1NC。[原廠圖 WS100C047（通路鏡像）](https://www.cleswitch.com.tw/uploads/files/1680832342.pdf)的外側兩端 NO／內側兩端 NC，再對照照片的低／高階位置。此資產包含兩個附件，不代表裸 S-P16 本體規格；不強行把反向印刷的 53/54、83/84 指派為左右。 |
 | AP1／AP-22 | `53–54`、`83–84` NO；`61–62`、`71–72` NC；由明確 `parentId=MC1` 的 coil snapshot 驅動 | [原廠 AP-4P 型錄頁](https://global.seec.com.tw/en/product/4603.html)確認 AP-22 為 2NO+2NC。各編號與排列沿用既有標示，仍屬教學假設；尚未取得對應實物的端子圖或導通量測。 |
 | TH1／資產標示 TH20 | 三路 `1/L1–2/T1`、`3/L2–4/T2`、`5/L3–6/T3` 固定導通；教學設定 `TC–TB` 常閉，`TC–TA` 常開，`tripped` 使兩者交換 | TC/TA/TB 是使用者照片辨識紀錄（`src/views/models.js`），電性對應未確認。現行 [TH-P20 原廠頁](https://global.seec.com.tw/en/product/4402.html)及[型錄](https://global.seec.com.tw/Templates/att/MS-P.pdf?lng=en)描述 1NO+1NC／95–96、97–98，不足以證實舊資產的三端共點關係。此處**僅為教學 SPDT 假設，不是實物 TH20 規格**；不更改已確認的三個端子 ID。 |
-| PB1–PB5 | `1–2` NO（顯示 13–14）；`3–4` NC（顯示 21–22） | 依既有模型端子／顯示對照，明示教學假設。`pressed=false` 時 NO 斷、NC 通；true 相反。 |
+| PB1–PB5 | `2–3` NO；`1–4` NC；顯示穩定 ID 與接點功能 | 依使用者 2026-09-15 確認的課堂接法校正：預設安裝、操作板展開並歸正視野時，綠色 ON 接左側 2/3，紅色 OFF 接右側 1/4。所有按鈕變體沿用相同 1NO+1NC 配置；未用組與其他顏色仍屬教學配置，非原廠型號逐顆量測。`pressed=false` 時 NO 斷、NC 通；true 相反。數字是模型 ID，不冒稱實物端子印字。 |
 | ES1 | `1–2` NC（顯示 21–22）；`latched=true` 斷開 | 教學假設，急停復歸只使這個接點閉合。 |
 | SA1 | 位置 0：`1–2` 通；位置 1：全斷；位置 2：`3–4` 通 | 教學真值表，位置 1 為預設停止。既有 UI 的演示狀態不會自動輸入核心。 |
 | QF1／T20 | `L1–T1`、`L2–T2`、`L3–T3` 隨 `on` 同步；初始 false | 教學三極開關，沒有隱含電源或自動保護曲線。 |
@@ -36,7 +36,7 @@ MC1、AP1、TH1 的機械附掛不產生跨元件電線或原廠固定橋接。�
 
 | 電線 ID | 起點 | 終點 |
 |---|---|---|
-| feed | SUPPLY.L | PB1.1 |
+| feed | SUPPLY.L | PB1.3 |
 | start | PB1.2 | MC1.A1 |
 | return | MC1.A2 | SUPPLY.N |
 
@@ -105,12 +105,12 @@ simulator.step(circuit, {QF1: {on: true}, PB5: {pressed: true}}); // 停止
 |---|---|---|
 | control-feed | CONTROL.L | FU1.F1-IN |
 | fused-feed | FU1.F1-OUT | ES1.1 |
-| emergency-stop | ES1.2 | PB5.3（NC） |
+| emergency-stop | ES1.2 | PB5.1（NC） |
 | stop-overload | PB5.4（NC） | TH1.TC |
-| overload-start | TH1.TB（教學 NC） | PB3.1（NO） |
+| overload-start | TH1.TB（教學 NC） | PB3.3（NO） |
 | start-coil | PB3.2（NO） | MC1.A1 |
 | coil-return | MC1.A2 | CONTROL.N |
-| hold-in / hold-out | PB3.1 → AP1.53 | AP1.54 → PB3.2 |
+| hold-in / hold-out | PB3.3 → AP1.53 | AP1.54 → PB3.2 |
 | lamp-in / lamp-out | MC1.A1 → HL4.1 | MC1.A2 → HL4.2 |
 | 主極 1 | MAIN.L1 → QF1.L1 → QF1.T1 → MC1.1L1 | MC1.2T1 → TH1.1/L1 → TH1.2/T1 → M1.U |
 | 主極 2 | MAIN.L2 → QF1.L2 → QF1.T2 → MC1.3L2 | MC1.4T2 → TH1.3/L2 → TH1.4/T2 → M1.V |
@@ -124,7 +124,7 @@ simulator.step(circuit, {QF1: {on: true}, PB5: {pressed: true}}); // 停止
 
 `npm run test:electrical` 在 Node 執行純電性測試；`npm test` 另外包含現有模型端子集合與面板姿勢整合檢查，以及原有幾何／路由驗證。
 
-後續實物核對：MC1 八側翼端子逐點導通、AP1 實際端子排列、TH1 TC/TA/TB 真值表、TB 同格橋接及負載額定銘牌。在此之前，以上 teaching profile 不升級為實物已確認規格。
+後續實物核對：PB 確切型號及未使用組的原廠排列、AP1 實際端子排列、TH1 TC/TA/TB 真值表、TB 同格橋接及負載額定銘牌。在此之前，以上 teaching profile 不升級為實物已確認規格。
 ## Phase 3 application integration
 
 WIRE-R6 exposes teaching CONTROL L/N, MAIN L1/L2/L3 and M1 U/V/W as endpoint cards. L/N are labels of this explicitly independent teaching control supply, not an assertion that a physical coil must use neutral. E-numbered user links are visible in the wire list; physical W-numbered wires retain routing and collision checks.
@@ -143,3 +143,9 @@ The application maps actual button pressed, emergency latched, breaker on, selec
 應用層保留與結果同一輪的 `evaluatedCircuit`，即使短接後模式改為 halted 仍可追查當時接線。halted 沒有有效 evaluation，因此只顯示診斷端子與相關接線，不渲染中途導通網路。停止後清除舊結果，修改接線再重新送電；急停和 TH 仍須各自復歸。
 
 定位按钮不會經過接線端點選取入口；多線證據與可刪除的單線選取分開，操作狀態更新後清除舊高亮。右側 DOL 手動練習對照見 [electrical-user-guide.md](electrical-user-guide.md)。
+
+## WIRE-R15 接點校正與舊檔
+
+端子 ID、座標和已接電線保持物理身分。R15 修正的是接點配對，匯入不會自動交换按鈕 1／3 或移線到 AP1。依 R14 對角假設製作的舊電路需要重新核對 PB 配線；內建 A04 與 DOL 已更新。課堂原始 BOARD-024 的 PB3 2/3、PB5 4/1 與 MC1 左右低層配線則直接對應新模型。
+
+`qa/fixtures/board-024-classroom.project.json` 保留使用者原始 22 條控制線；`examples/board-024-classroom.project.json` 只另加 MAIN L1/L2/L3 到 QF1 同名輸入，並令 QF1 初始 OFF。未加入主馬達回路，M1 不應被宣稱已供電。電源入口必須明示接線；模型不因 QF1 ON 自動產生電源。兩份檔案均未使用 AP1。

@@ -10,7 +10,7 @@ const pressed = {PB1: {pressed: true}};
 const withHold = () => {
   const c = minimalControlCircuit();
   return {...c, components: [...c.components, createTeachingComponent({id: 'AP1', definitionId: 'shihlin-ap22', parentId: 'MC1'})],
-    wires: [...c.wires, wire('hold-in', ['PB1', '1'], ['AP1', '53']), wire('hold-out', ['AP1', '54'], ['PB1', '2'])]};
+    wires: [...c.wires, wire('hold-in', ['PB1', '3'], ['AP1', '53']), wire('hold-out', ['AP1', '54'], ['PB1', '2'])]};
 };
 const closed = (r, component, id) => r.evaluation.contacts.find(c => c.component === component && c.id === id).closed;
 

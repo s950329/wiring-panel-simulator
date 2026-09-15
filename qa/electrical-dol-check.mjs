@@ -85,8 +85,9 @@ test('overload affects only its wired contact; bypassing that contact is not hid
 
 test('phase short and an unverified terminal halt the exercise without publishing partial coil or motor states', () => {
   const c = directOnLineCircuit();
+  c.components.push({id: 'UNVERIFIED', terminals: ['1']});
   for (const [a, b, code] of [[ep('MAIN', 'L1'), ep('MAIN', 'L2'), 'SOURCE_SHORT'],
-    [ep('MC1', 'L-B-U'), ep('PB3', '1'), 'MISSING_MODEL']]) {
+    [ep('UNVERIFIED', '1'), ep('PB3', '3'), 'MISSING_MODEL']]) {
     const r = new ElectricalSimulator().step({...c, wires: [...c.wires, {id: 'fault', from: a, to: b}]}, start);
     assert.equal(r.status, 'halted'); assert.equal(r.evaluation, null); assert.equal(r.coils, null);
     assert.ok(r.diagnostics.some(d => d.code === code));

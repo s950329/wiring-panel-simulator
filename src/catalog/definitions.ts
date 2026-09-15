@@ -42,7 +42,7 @@ const definitions: Record<string, ComponentDefinition> = {
       90,
       143
     ],
-    "hint": "按住可動件示範機械壓合，放開即復位。本體共 16 個接線點：六個主端子、八個側翼端子，以及後側下排 A1／A2。位置標籤表示左／右、前／後、上／下，實物端子號待確認。下方 TA／TB／TC 可選取 TH1 查看。"
+    "hint": "本盤 S-P16 左右各裝一組 APS-11：同側下方前後兩端為常開，上方前後兩端為常閉，隨線圈吸合切換。A1／A2 是線圈端子；TA／TB／TC 請選取 TH1 查看。"
   },
   "shihlin-ap22": {
     "id": "shihlin-ap22",
@@ -204,7 +204,7 @@ const definitions: Record<string, ComponentDefinition> = {
       45,
       38
     ],
-    "hint": "按住按鈕，放開回彈。也可用下方按鍵操作。"
+    "hint": "按住按鈕，放開回彈。端子 2／3 為常開：按下導通；端子 1／4 為常閉：按下斷開。"
   },
   "button-teal": {
     "id": "button-teal",
@@ -219,7 +219,7 @@ const definitions: Record<string, ComponentDefinition> = {
       45,
       38
     ],
-    "hint": "按住按鈕，放開回彈。也可用下方按鍵操作。"
+    "hint": "按住按鈕，放開回彈。端子 2／3 為常開：按下導通；端子 1／4 為常閉：按下斷開。"
   },
   "button-green": {
     "id": "button-green",
@@ -234,7 +234,7 @@ const definitions: Record<string, ComponentDefinition> = {
       45,
       38
     ],
-    "hint": "按住按鈕，放開回彈。也可用下方按鍵操作。"
+    "hint": "按住按鈕，放開回彈。端子 2／3 為常開：按下導通；端子 1／4 為常閉：按下斷開。"
   },
   "button-red-sticker": {
     "id": "button-red-sticker",
@@ -250,7 +250,7 @@ const definitions: Record<string, ComponentDefinition> = {
       45,
       38
     ],
-    "hint": "按住按鈕，放開回彈。也可用下方按鍵操作。"
+    "hint": "按住按鈕，放開回彈。端子 2／3 為常開：按下導通；端子 1／4 為常閉：按下斷開。"
   },
   "button-red": {
     "id": "button-red",
@@ -265,7 +265,7 @@ const definitions: Record<string, ComponentDefinition> = {
       45,
       38
     ],
-    "hint": "按住按鈕，放開回彈。也可用下方按鍵操作。"
+    "hint": "按住按鈕，放開回彈。端子 2／3 為常開：按下導通；端子 1／4 為常閉：按下斷開。"
   },
   "lamp-white": {
     "id": "lamp-white",

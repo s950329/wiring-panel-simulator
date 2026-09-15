@@ -1,7 +1,7 @@
 {
   "format": "wiring-panel-project",
   "schemaVersion": 1,
-  "name": "A04 馬達啟動控制｜單一電源",
+  "name": "BOARD 024",
   "configuration": {
     "units": {
       "position": "scene-units",
@@ -146,7 +146,7 @@
           "rotationY": -90
         },
         "state": {
-          "on": false
+          "on": true
         }
       },
       {
@@ -163,7 +163,7 @@
           "rotationY": -90
         },
         "state": {
-          "open": false
+          "open": true
         }
       },
       {
@@ -185,7 +185,7 @@
         "definitionId": "shihlin-ap22",
         "definitionVersion": 1,
         "placement": {
-          "assemblyId": "MC1-assembly",
+          "assemblyId": "drive-assembly",
           "slot": "auxiliary"
         }
       },
@@ -194,7 +194,7 @@
         "definitionId": "shihlin-th20",
         "definitionVersion": 1,
         "placement": {
-          "assemblyId": "MC1-assembly",
+          "assemblyId": "drive-assembly",
           "slot": "overload"
         },
         "parameters": {
@@ -463,7 +463,7 @@
     ],
     "assemblies": [
       {
-        "id": "MC1-assembly",
+        "id": "drive-assembly",
         "definitionId": "shihlin-sp16-accessories",
         "definitionVersion": 1,
         "hostId": "MC1"
@@ -483,28 +483,8 @@
         "terminal": "T1"
       },
       "to": {
-        "component": "MC1",
-        "terminal": "1L1"
-      }
-    },
-    {
-      "from": {
-        "component": "QF1",
-        "terminal": "T2"
-      },
-      "to": {
-        "component": "MC1",
-        "terminal": "3L2"
-      }
-    },
-    {
-      "from": {
-        "component": "QF1",
-        "terminal": "T3"
-      },
-      "to": {
-        "component": "MC1",
-        "terminal": "5L3"
+        "component": "FU1",
+        "terminal": "F1-IN"
       }
     },
     {
@@ -513,94 +493,34 @@
         "terminal": "F1-OUT"
       },
       "to": {
-        "component": "TB1",
-        "terminal": "1A"
+        "component": "MC1",
+        "terminal": "R-B-L"
       }
     },
     {
       "from": {
-        "component": "TB1",
-        "terminal": "1B"
+        "component": "MC1",
+        "terminal": "R-B-L"
       },
       "to": {
         "component": "TB1",
-        "terminal": "2A"
+        "terminal": "46A"
       }
     },
     {
       "from": {
         "component": "TB1",
-        "terminal": "2B"
-      },
-      "to": {
-        "component": "TB1",
-        "terminal": "3A"
-      }
-    },
-    {
-      "from": {
-        "component": "TB1",
-        "terminal": "3B"
-      },
-      "to": {
-        "component": "TB1",
-        "terminal": "4A"
-      }
-    },
-    {
-      "from": {
-        "component": "TB1",
-        "terminal": "2B"
-      },
-      "to": {
-        "component": "PB5",
-        "terminal": "1"
-      }
-    },
-    {
-      "from": {
-        "component": "TB1",
-        "terminal": "3B"
-      },
-      "to": {
-        "component": "BZ1",
-        "terminal": "1"
-      }
-    },
-    {
-      "from": {
-        "component": "TB1",
-        "terminal": "4B"
+        "terminal": "46B"
       },
       "to": {
         "component": "HL3",
-        "terminal": "1"
+        "terminal": "2"
       }
     },
     {
       "from": {
-        "component": "TB1",
-        "terminal": "4A"
-      },
-      "to": {
-        "component": "AP1",
-        "terminal": "83"
-      }
-    },
-    {
-      "from": {
-        "component": "AP1",
-        "terminal": "53"
-      },
-      "to": {
-        "component": "TB1",
-        "terminal": "12A"
-      }
-    },
-    {
-      "from": {
-        "component": "TB1",
-        "terminal": "12B"
+        "component": "HL3",
+        "terminal": "2"
       },
       "to": {
         "component": "PB5",
@@ -609,22 +529,52 @@
     },
     {
       "from": {
-        "component": "TB1",
-        "terminal": "12B"
+        "component": "PB5",
+        "terminal": "4"
       },
       "to": {
-        "component": "PB3",
-        "terminal": "3"
+        "component": "BZ1",
+        "terminal": "2"
       }
     },
     {
       "from": {
-        "component": "AP1",
-        "terminal": "54"
+        "component": "PB5",
+        "terminal": "1"
       },
       "to": {
+        "component": "PB3",
+        "terminal": "2"
+      }
+    },
+    {
+      "from": {
         "component": "TB1",
-        "terminal": "13A"
+        "terminal": "45B"
+      },
+      "to": {
+        "component": "PB3",
+        "terminal": "2"
+      }
+    },
+    {
+      "from": {
+        "component": "TB1",
+        "terminal": "45A"
+      },
+      "to": {
+        "component": "MC1",
+        "terminal": "L-B-L"
+      }
+    },
+    {
+      "from": {
+        "component": "MC1",
+        "terminal": "L-F-L"
+      },
+      "to": {
+        "component": "MC1",
+        "terminal": "A1"
       }
     },
     {
@@ -634,17 +584,17 @@
       },
       "to": {
         "component": "TB1",
-        "terminal": "13A"
+        "terminal": "44A"
       }
     },
     {
       "from": {
         "component": "TB1",
-        "terminal": "13B"
+        "terminal": "44B"
       },
       "to": {
         "component": "PB3",
-        "terminal": "2"
+        "terminal": "3"
       }
     },
     {
@@ -659,12 +609,72 @@
     },
     {
       "from": {
-        "component": "TH1",
-        "terminal": "TC"
+        "component": "HL3",
+        "terminal": "1"
+      },
+      "to": {
+        "component": "BZ1",
+        "terminal": "1"
+      }
+    },
+    {
+      "from": {
+        "component": "HL3",
+        "terminal": "1"
       },
       "to": {
         "component": "TB1",
-        "terminal": "10A"
+        "terminal": "43B"
+      }
+    },
+    {
+      "from": {
+        "component": "TB1",
+        "terminal": "43A"
+      },
+      "to": {
+        "component": "TH1",
+        "terminal": "TA"
+      }
+    },
+    {
+      "from": {
+        "component": "MC1",
+        "terminal": "R-F-L"
+      },
+      "to": {
+        "component": "TB1",
+        "terminal": "42A"
+      }
+    },
+    {
+      "from": {
+        "component": "TB1",
+        "terminal": "42B"
+      },
+      "to": {
+        "component": "HL4",
+        "terminal": "2"
+      }
+    },
+    {
+      "from": {
+        "component": "HL4",
+        "terminal": "1"
+      },
+      "to": {
+        "component": "TB1",
+        "terminal": "41B"
+      }
+    },
+    {
+      "from": {
+        "component": "FU1",
+        "terminal": "F2-IN"
+      },
+      "to": {
+        "component": "QF1",
+        "terminal": "T3"
       }
     },
     {
@@ -673,148 +683,18 @@
         "terminal": "F2-OUT"
       },
       "to": {
-        "component": "TB1",
-        "terminal": "10A"
-      }
-    },
-    {
-      "from": {
-        "component": "TB1",
-        "terminal": "10B"
-      },
-      "to": {
-        "component": "HL4",
-        "terminal": "2"
+        "component": "TH1",
+        "terminal": "TC"
       }
     },
     {
       "from": {
         "component": "TH1",
-        "terminal": "TA"
+        "terminal": "TC"
       },
       "to": {
         "component": "TB1",
-        "terminal": "11A"
-      }
-    },
-    {
-      "from": {
-        "component": "TB1",
-        "terminal": "11B"
-      },
-      "to": {
-        "component": "BZ1",
-        "terminal": "2"
-      }
-    },
-    {
-      "from": {
-        "component": "TB1",
-        "terminal": "11B"
-      },
-      "to": {
-        "component": "HL3",
-        "terminal": "2"
-      }
-    },
-    {
-      "from": {
-        "component": "AP1",
-        "terminal": "84"
-      },
-      "to": {
-        "component": "TB1",
-        "terminal": "9A"
-      }
-    },
-    {
-      "from": {
-        "component": "TB1",
-        "terminal": "9B"
-      },
-      "to": {
-        "component": "HL4",
-        "terminal": "1"
-      }
-    },
-    {
-      "from": {
-        "component": "QF1",
-        "terminal": "T1"
-      },
-      "to": {
-        "component": "FU1",
-        "terminal": "F1-IN"
-      }
-    },
-    {
-      "from": {
-        "component": "QF1",
-        "terminal": "T3"
-      },
-      "to": {
-        "component": "FU1",
-        "terminal": "F2-IN"
-      }
-    },
-    {
-      "from": {
-        "component": "MAIN",
-        "terminal": "L1"
-      },
-      "to": {
-        "component": "QF1",
-        "terminal": "L1"
-      }
-    },
-    {
-      "from": {
-        "component": "MAIN",
-        "terminal": "L2"
-      },
-      "to": {
-        "component": "QF1",
-        "terminal": "L2"
-      }
-    },
-    {
-      "from": {
-        "component": "MAIN",
-        "terminal": "L3"
-      },
-      "to": {
-        "component": "QF1",
-        "terminal": "L3"
-      }
-    },
-    {
-      "from": {
-        "component": "TH1",
-        "terminal": "2/T1"
-      },
-      "to": {
-        "component": "M1",
-        "terminal": "U"
-      }
-    },
-    {
-      "from": {
-        "component": "TH1",
-        "terminal": "4/T2"
-      },
-      "to": {
-        "component": "M1",
-        "terminal": "V"
-      }
-    },
-    {
-      "from": {
-        "component": "TH1",
-        "terminal": "6/T3"
-      },
-      "to": {
-        "component": "M1",
-        "terminal": "W"
+        "terminal": "41A"
       }
     }
   ]

@@ -84,7 +84,7 @@ def capture(page, name):
 def run(browser, page):
     page.goto(BASE, wait_until='networkidle')
     ready(page)
-    check(page.evaluate('window.wiringLab.getRevision()') == 'WIRE-R14', 'R14 boot')
+    check(page.evaluate('window.wiringLab.getRevision()') == 'WIRE-R15', 'R15 boot')
     check(page.locator('#component-select option').count() == 22, 'default 22 components')
     load(page, 'a04-motor-start.project.json')
     check(page.evaluate('window.wiringLab.getWires().length') == 28, 'A04 native route import')
@@ -176,12 +176,12 @@ def run(browser, page):
     page.close()
     # Opening through both HTTP and file:// checks the delivered offline artifact.
     for url, label in [(BASE + '/wiring-panel.html', 'served standalone'),
-                       ((ROOT / 'downloads/wiring-panel-WIRE-R14.html').as_uri(), 'file-protocol standalone')]:
+                       ((ROOT / 'downloads/wiring-panel-WIRE-R15.html').as_uri(), 'file-protocol standalone')]:
         offline = browser.new_page(viewport={'width': 1500, 'height': 1000})
         offline.on('pageerror', lambda error: errors.append(str(error)))
         offline.goto(url, wait_until='load')
         ready(offline)
-        check(offline.evaluate("window.wiringLab.getRevision()==='WIRE-R14' && window.wiringLab.getProject().format==='wiring-panel-project'"), label + ' boot')
+        check(offline.evaluate("window.wiringLab.getRevision()==='WIRE-R15' && window.wiringLab.getProject().format==='wiring-panel-project'"), label + ' boot')
         load(offline, 'custom-panel-less.project.json')
         check(offline.locator('#component-select option').count() == 2, label + ' project import')
         offline.close()

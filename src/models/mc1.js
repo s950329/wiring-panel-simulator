@@ -65,11 +65,11 @@ export function buildMC1(c){
       box(g,15.7,7,20,x,y-6,z,mat.black,.5);
       box(g,15.7,7,2,x,y-2,z-end*9.5,mat.dark,.3);
       box(g,7,2.5,.4,x,y-11,z+end*10.1,mat.dark,.1);
-      contact(c,`${sideId}-${endId}-${level}`,x,y,z,{displayName:sideName+(end<0?'後':'前')+(upper?'上':'下'),group:'side',side:sideId,end:endId,level});
+      contact(c,`${sideId}-${endId}-${level}`,x,y,z,{displayName:sideName+(end<0?'後':'前')+(upper?'上 · 常閉 NC':'下 · 常開 NO'),group:'side',side:sideId,end:endId,level});
     }
     const plate=label(g,'SHIHLIN  S-P16\nMAGNETIC CONTACTOR\n士 林 電 機',56,45,x+side*9.3,56,0,{bg:'#c6c9bf',fg:'#4e554f',size:23});
     plate.rotation.set(0,side*Math.PI/2,0);
-    label(g,'NO      NC\nCONTACT',13,50,x,88.2,0,{bg:'#d4d6cd',fg:'#424b45',size:22});
+    label(g,'APS-11\n1NO 1NC',13,50,x,88.2,0,{bg:'#d4d6cd',fg:'#424b45',size:22});
   }
   // Two additional rear lower terminals are visible beneath the main bank.
   // A1/A2 read from the rotated close-up of IMG_2690, not inferred from the type.

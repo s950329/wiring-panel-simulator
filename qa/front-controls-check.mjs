@@ -19,8 +19,8 @@ test('operation-panel terminal counts match photographed hardware',()=>{
 
 test('pushbuttons expose one NO pair and one NC pair',()=>{
   for(const id of ['PB1','PB2','PB3','PB4','PB5']){
-    assert.deepEqual(names(id),['13 · 常開 NO','14 · 常開 NO','21 · 常閉 NC','22 · 常閉 NC']);
-    assert.deepEqual(components.get(id).terminals.map(t=>t.group),['NO','NO','NC','NC']);
+    assert.deepEqual(names(id),['1 · 常閉 NC','2 · 常開 NO','3 · 常開 NO','4 · 常閉 NC']);
+    assert.deepEqual(components.get(id).terminals.map(t=>t.group),['NC','NO','NO','NC']);
     assert.equal(new Set(components.get(id).terminals.map(t=>t.local.join(','))).size,4);
   }
 });

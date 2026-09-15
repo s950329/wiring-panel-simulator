@@ -194,3 +194,12 @@ ThreeComponentView 在建立時即把四顆指示燈設為熄滅材質，原始�
 `project/legacy.ts` 拒絕仍接 CONTROL 的舊檔，保留原檔／原 runtime；只有無引用的自動 CONTROL 可在轉換副本移除並回報 conversionNotes。舊 generic MAIN 不升級能力，舊 main=false 無法映射為 QF1 時拒絕。正常新格式不保存來源可用勾選。
 
 全部先通過原生路由與操作板姿態驗證，才交易式替換。`examples/a04-motor-start.project.json` 有28條盤內線、6條外接線，QF1初始OFF。歷史 `application/simulation.ts`、舊快照與單元件入口仍供舊核心回歸／除錯，不是正常頁的雙供電模式。完整驗收與環境限制見 `docs/a04-single-source-acceptance.md`。
+
+
+## WIRE-R15：課堂接點校正
+
+`electrical/catalog.ts` 的既有 S-P16 課堂資產納入左右 APS-11 各一組 NO／NC，以同一實例的 coil 驅動；側端子保留既有 ID 及幾何座標，仍歸於幾何用的 side group。兩側、上下接點各自獨立，不添加固定短接。AP1 上裝模組的 parent-coil 行為不變。
+
+按鈕的電性配對改為 NO 2/3、NC 1/4，`components.ts` 同步顯示 ID 與功能；模型不依 PB3／PB5 名稱或帽色判斷接點。內建教學接線的舊 PB 1/3 端點校正，但匯入器不做推測性遷移，保留使用者既有物理端點。使用者課堂案例的原始 22 條線另存固定 fixture，測試包含視野歸正投影、接點真值、隔離、自保、停止優先、過載及實際匯入控制器。
+
+`examples/board-024-classroom.project.json` 在原始控制線後追加三條明示進線，QF1 初始 OFF；沒有自動接電、馬達捷徑或辨識答案的特殊分支。仍以原生路由重建並驗證操作板收合。

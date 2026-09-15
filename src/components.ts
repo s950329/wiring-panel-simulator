@@ -24,10 +24,11 @@ function configureFrontTerminals(model: ModelContext, def: ResolvedComponent): v
   const [a, b] = model.terminals;
   if (!a || !b) return;
   if (def.type === 'button') {
-    decorateFrontTerminal(a, '13 · 常開 NO', 'NO');
-    decorateFrontTerminal(b, '14 · 常開 NO', 'NO');
-    addFrontTerminal(model, '3', '21 · 常閉 NC', 'NC', -9, 6);
-    addFrontTerminal(model, '4', '22 · 常閉 NC', 'NC', 9, -6);
+    // Keep physical IDs/positions stable; label the same-side contacts used in class.
+    decorateFrontTerminal(a, '1 · 常閉 NC', 'NC');
+    decorateFrontTerminal(b, '2 · 常開 NO', 'NO');
+    addFrontTerminal(model, '3', '3 · 常開 NO', 'NO', -9, 6);
+    addFrontTerminal(model, '4', '4 · 常閉 NC', 'NC', 9, -6);
   } else if (def.type === 'selector') {
     decorateFrontTerminal(a, '13 · 接點 A', 'selector-A');
     decorateFrontTerminal(b, '14 · 接點 A', 'selector-A');

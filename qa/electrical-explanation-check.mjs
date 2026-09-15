@@ -56,9 +56,9 @@ test('short circuit and unsupported terminal explanations keep fault endpoints w
   const es = explainSimulation(shorted, settleCircuit(shorted));
   assert.ok(es.some(e => e.id.startsWith('diagnostic:SOURCE_SHORT') && /短接/.test(e.title) && e.wireIds.includes('short')));
   assert.equal(es.some(e => e.id.startsWith('load:')), false);
-  const unknown = {...c, wires: [...c.wires, line('unknown', ['SUPPLY', 'L'], ['MC1', 'L-B-U'])]};
+  const unknown = {...c, components: [...c.components, createTeachingComponent({id: 'UNVERIFIED', definitionId: 'cn18'})], wires: [...c.wires, line('unknown', ['SUPPLY', 'L'], ['UNVERIFIED', '21NC'])]};
   const e = explainSimulation(unknown, settleCircuit(unknown)).find(e => e.id.startsWith('diagnostic:MISSING_MODEL'));
-  assert.match(e.detail, /尚未確認/); assert.ok(e.endpoints.some(e => e.terminal === 'L-B-U'));
+  assert.match(e.detail, /尚未確認/); assert.ok(e.endpoints.some(e => e.component === 'UNVERIFIED' && e.terminal === '21NC'));
 });
 
 test('oscillation and non-convergence have actionable stop/edit/retry explanations', () => {
