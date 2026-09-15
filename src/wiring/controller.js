@@ -1,8 +1,7 @@
 import * as T from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {routeWire} from './router.js';
-import {collectSolids} from './solids.js';
-import {CollisionWorld} from './collision.js';
+import {planRoutes} from './planner.ts';
+import {getRoutingContext} from './context.ts';
 const selectedColor=0xff28a6,flashColor=new T.Color(0xfff3fa);
 export function wireMesh(wire){
  const geometries=[],up=new T.Vector3(0,1,0);
@@ -18,13 +17,53 @@ export class WiringController{
  /** @param {import('three').Group} world
   * @param {ReadonlyMap<string, import('../core/contracts.ts').ComponentRuntime>} components
   * @param {{canEdit?: () => boolean, context?: import('./context.ts').RoutingContext}} [options] */
- constructor(world,components,{canEdit=()=>true,context}={}){this.world=world;this.context=context;this.components=components;this.canEdit=canEdit;this.wires=[];this.sequence=0;this.selected=null;this.group=new T.Group();this.group.name='user-wires';this.group.userData.wireGroup=true;world.add(this.group);}
+ constructor(world,components,{canEdit=()=>true,context}={}){this.world=world;this.context=context;this.components=components;this.canEdit=canEdit;this.wires=[];this.sequence=0;this.selected=null;this.poseRoutes=new Map();this.lastPlan=null;this.group=new T.Group();this.group.name='user-wires';this.group.userData.wireGroup=true;world.add(this.group);}
  assertEditable(){if(!this.canEdit())throw new Error('請先停止模擬再修改接線');}
  /** @param {import('../electrical/contracts.ts').Endpoint} from
   * @param {import('../electrical/contracts.ts').Endpoint} to
   * @returns {import('../application/board-snapshot.ts').RoutedWire} */
- connect(from,to){this.assertEditable();for(const c of this.components.values())c.syncRoutingPose();const route=routeWire(this.world,this.components,from,to,this.wires,this.context);route.id='W'+String(++this.sequence).padStart(2,'0');const mesh=wireMesh(route);this.group.add(mesh);this.wires.push(route);this.select(route.id);return route;}
- remove(id){this.assertEditable();const i=this.wires.findIndex(w=>w.id===id);if(i<0)return false;this.wires.splice(i,1);const m=this.group.children.find(m=>m.userData.wireId===id);m.geometry.dispose();m.material.dispose();this.group.remove(m);this.select(null);return true;}
+ connect(from,to){
+  this.assertEditable();
+  const key=e=>`${e.component}:${e.terminal}`;
+  if(key(from)===key(to))throw new Error('請選另一個端子');
+  if(this.wires.some(w=>[key(w.from),key(w.to)].sort().join('|')===[key(from),key(to)].sort().join('|')))throw new Error('這兩個端子已經接線');
+  const id='W'+String(this.sequence+1).padStart(2,'0'),requests=[...this.wires,{id,from:{...from},to:{...to}}];
+  const panel=this.operationPanel(),angle=panel?.rotation.x,plans=new Map();
+  let current;
+  try{
+   this.syncPose();current=this.plan(requests,this.wires);plans.set(this.poseKey(),current.routes);
+   if(panel){
+    // A connection becomes visible only after both working poses have solutions.
+    for(const target of [0,Math.PI]){
+     if(Math.abs(target-angle)<1e-6)continue;
+     panel.rotation.x=target;this.syncPose();
+     const result=this.plan(requests,this.poseRoutes.get(this.poseKey())??current.routes);
+     plans.set(this.poseKey(),result.routes);
+    }
+   }
+  }finally{if(panel)panel.rotation.x=angle;this.syncPose();}
+  this.commitRoutes(current.routes);this.poseRoutes=plans;this.sequence++;this.select(id);
+  return this.wires.find(w=>w.id===id);
+ }
+ remove(id){this.assertEditable();const i=this.wires.findIndex(w=>w.id===id);if(i<0)return false;this.wires.splice(i,1);for(const [key,routes] of this.poseRoutes)this.poseRoutes.set(key,routes.filter(w=>w.id!==id));const m=this.group.children.find(m=>m.userData.wireId===id);m.geometry.dispose();m.material.dispose();this.group.remove(m);this.select(null);return true;}
+ operationPanel(){return this.world.children.find(o=>o.userData.operationPanel);}
+ poseKey(){const panel=this.operationPanel();return panel?String(panel.rotation.x):'fixed';}
+ syncPose(){for(const c of this.components.values())c.syncRoutingPose();this.world.updateMatrixWorld(true);}
+ plan(requests,preferred){
+  try{const result=planRoutes(this.world,this.components,requests,preferred,getRoutingContext(this.world,this.context));this.lastPlan={pose:this.poseKey(),status:'ready',...result.diagnostics};return result;}
+  catch(error){this.lastPlan={pose:this.poseKey(),status:'failed',code:error.code,message:error.message,...error.diagnostics};throw error;}
+ }
+ commitRoutes(routes){
+  const prepared=[];
+  try{for(const route of routes)if(this.wires.find(w=>w.id===route.id)!==route)prepared.push(wireMesh(route));}
+  catch(error){for(const mesh of prepared){mesh.geometry.dispose();mesh.material.dispose();}throw error;}
+  for(const mesh of prepared){
+   const previous=this.group.children.find(m=>m.userData.wireId===mesh.userData.wireId);
+   if(previous){this.group.remove(previous);previous.geometry.dispose();previous.material.dispose();}
+   this.group.add(mesh);
+  }
+  this.wires=routes;this.renderSelection();
+ }
  select(id){this.selected=id;this.evidence=new Set();this.renderSelection();}
  trace(ids){this.selected=null;this.evidence=new Set(ids);this.renderSelection();}
  renderSelection(){
@@ -46,22 +85,18 @@ export class WiringController{
  // Compute the complete new pose before replacing any route or mesh. A failed
  // search rolls back the mechanism and leaves IDs, selection and topology intact.
  movePanel(applyPose,restorePose,movingComponents){
-  const prepared=[];
+  const oldKey=this.poseKey(),oldRoutes=this.wires;
   try{
-   applyPose();for(const c of this.components.values())c.syncRoutingPose();
-   const collision=new CollisionWorld(collectSolids(this.world));
-   const fixed=this.wires.filter(w=>!movingComponents.has(w.from.component)&&!movingComponents.has(w.to.component)&&collision.validate(w.points));
-   const routes=[...fixed],replacements=new Map();
-   for(const wire of this.wires){if(fixed.includes(wire))continue;const route={...routeWire(this.world,this.components,wire.from,wire.to,routes,this.context),id:wire.id};routes.push(route);replacements.set(wire.id,route);prepared.push(wireMesh(route));}
-   this.wires=this.wires.map(w=>replacements.get(w.id)||w);
-  }catch(error){for(const mesh of prepared){mesh.geometry.dispose();mesh.material.dispose();}restorePose();throw error;}
-  for(const mesh of prepared){const previous=this.group.children.find(m=>m.userData.wireId===mesh.userData.wireId);this.group.remove(previous);previous.geometry.dispose();previous.material.dispose();this.group.add(mesh);}
-  this.renderSelection();
+   applyPose();this.syncPose();
+   // Cached paths are preferences, revalidated against current solids and anchors.
+   const {routes}=this.plan(this.wires,this.poseRoutes.get(this.poseKey())??this.wires);
+   this.commitRoutes(routes);this.poseRoutes.set(oldKey,oldRoutes);this.poseRoutes.set(this.poseKey(),routes);
+  }catch(error){restorePose();this.syncPose();throw error;}
  }
  snapshot(){return structuredClone(this.wires);}
  replacePrepared(prepared){
   this.assertEditable();
-  const old=this.group;this.group=prepared.group;this.wires=prepared.wires;
+  const old=this.group;this.group=prepared.group;this.wires=prepared.wires;this.poseRoutes.clear();
   this.sequence=this.wires.reduce((n,w)=>Math.max(n,Number(w.id.slice(1))),0);
   this.world.add(this.group);this.select(null);old.removeFromParent();
   for(const mesh of old.children){mesh.geometry.dispose();mesh.material.dispose();}old.clear();

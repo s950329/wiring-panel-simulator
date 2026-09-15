@@ -19,13 +19,13 @@ export function segmentDistance(a,b,c,d){
 }
 export function segments(points){return points.slice(1).map((b,i)=>({a:points[i],b,min:b.map((v,k)=>Math.min(v,points[i][k])),max:b.map((v,k)=>Math.max(v,points[i][k]))}));}
 export class CollisionWorld{
- constructor(boxes,wires=[]){this.boxes=boxes;this.cell=20;this.hash=new Map();this.wireSegments=wires.flatMap(w=>segments(w.points));for(let i=0;i<boxes.length;i++){const b=boxes[i];this.cells(b.min,b.max,k=>{const list=this.hash.get(k)||[];list.push(i);this.hash.set(k,list);});}}
+ constructor(boxes,wires=[]){this.boxes=boxes;this.cell=20;this.hash=new Map();this.blockingWireIds=new Set();this.wireSegments=wires.flatMap(w=>segments(w.points).map(s=>({...s,wireId:w.id})));for(let i=0;i<boxes.length;i++){const b=boxes[i];this.cells(b.min,b.max,k=>{const list=this.hash.get(k)||[];list.push(i);this.hash.set(k,list);});}}
  cells(min,max,fn){for(let x=Math.floor(min[0]/this.cell);x<=Math.floor(max[0]/this.cell);x++)for(let y=Math.floor(min[1]/this.cell);y<=Math.floor(max[1]/this.cell);y++)for(let z=Math.floor(min[2]/this.cell);z<=Math.floor(max[2]/this.cell);z++)fn(`${x},${y},${z}`);}
  clear(a,b=a){
   const pad=WIRE_RADIUS+SOLID_CLEARANCE,min=a.map((v,i)=>Math.min(v,b[i])-pad),max=a.map((v,i)=>Math.max(v,b[i])+pad),seen=new Set();let okay=true;
   this.cells(min,max,k=>{if(!okay)return;for(const i of this.hash.get(k)||[]){if(seen.has(i))continue;seen.add(i);if(segmentBox(a,b,this.boxes[i],pad)){okay=false;break;}}});if(!okay)return false;
   const gap=2*WIRE_RADIUS+WIRE_GAP;
-  for(const s of this.wireSegments){if(s.max.some((v,i)=>v<min[i]-gap)||s.min.some((v,i)=>v>max[i]+gap))continue;if(segmentDistance(a,b,s.a,s.b)<gap-1e-6)return false;}return true;
+  for(const s of this.wireSegments){if(s.max.some((v,i)=>v<min[i]-gap)||s.min.some((v,i)=>v>max[i]+gap))continue;if(segmentDistance(a,b,s.a,s.b)<gap-1e-6){if(s.wireId)this.blockingWireIds.add(s.wireId);return false;}}return true;
  }
  validate(points){for(const s of segments(points))if(!this.clear(s.a,s.b))return false;return true;}
 }

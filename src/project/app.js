@@ -92,7 +92,7 @@ export function startProjectApp(){
  }
  const motionPreference=window.matchMedia('(prefers-reduced-motion: reduce)');installRuntime();
  filesUI=createProjectFiles($('.sidebar'),{load:loadProject,cancel:()=>session.cancel(),export:()=>active().exportProject(),
-  debug:()=>({format:'wiring-panel-debug',schemaVersion:1,revision:MODEL_REVISION,project:active().exportProject(),routes:active().routing.snapshot(),simulation:active().simulation.snapshot(),session:wireUI.snapshotSession(),camera:{azimuth:app.orbit.azimuth,elevation:app.orbit.elevation,radius:app.orbit.radius}}),changed:lockControls,isBusy:()=>!!wireUI?.isBusy()});
+  debug:()=>({format:'wiring-panel-debug',schemaVersion:1,revision:MODEL_REVISION,project:active().exportProject(),routes:active().routing.snapshot(),routingPlan:structuredClone(active().routing.lastPlan),simulation:active().simulation.snapshot(),session:wireUI.snapshotSession(),camera:{azimuth:app.orbit.azimuth,elevation:app.orbit.elevation,radius:app.orbit.radius}}),changed:lockControls,isBusy:()=>!!wireUI?.isBusy()});
  $('#project-name').onchange=()=>{if(session.busy)return;const name=$('#project-name').value.trim();if(name)active().project.name=name;else delete active().project.name;$('#project-meta').textContent=name||'配線專案';};
  $('#component-select').onchange=()=>select($('#component-select').value);
  $('#reset-project').onclick=async()=>{try{await loadProject(JSON.stringify(defaultProject()),p=>{filesUI.status.textContent=`載入預設盤面 · ${p.detail}`;});filesUI.status.textContent='已載入預設盤面，電源已預接至 QF1；尚無練習接線，模擬未執行。';}catch(error){toast(error.message);}finally{filesUI.render();}};
@@ -126,7 +126,7 @@ export function startProjectApp(){
  window.wiringLab={getRevision:()=>MODEL_REVISION,getProject:()=>active().exportProject(),loadProject:source=>loadProject(source),cancelImport:()=>session.cancel(),
   getWires:()=>active().routing.snapshot(),getSimulation:()=>active().simulation.snapshot(),getConfiguration:()=>active().exportProject().configuration,
   getState:()=>Object.fromEntries([...active().components].map(([id,c])=>[id,{...c.state}])),getTerminals:id=>structuredClone(active().components.get(id)?.terminalDefinitions??[]),
-  getSnapshot:()=>({format:'wiring-panel-debug',project:active().exportProject(),routes:active().routing.snapshot(),simulation:active().simulation.snapshot()}),
+  getSnapshot:()=>({format:'wiring-panel-debug',project:active().exportProject(),routes:active().routing.snapshot(),routingPlan:structuredClone(active().routing.lastPlan),simulation:active().simulation.snapshot()}),
   getCamera:()=>({azimuth:app.orbit.azimuth,elevation:app.orbit.elevation,radius:app.orbit.radius}),dispose};
  return{session,app,dispose};
 }
