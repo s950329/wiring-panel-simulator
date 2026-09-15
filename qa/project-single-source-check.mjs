@@ -8,7 +8,7 @@ import {buildProject,ProjectSession} from '../src/project/session.ts';
 import {readFileSync} from 'node:fs';
 const SOURCE='teaching-ac220-three-phase-source';
 globalThis.document??={createElement:()=>({getContext:()=>({fillRect(){},strokeRect(){},fillText(){}})})};
-function single(){const p=defaultProject();p.configuration.components=p.configuration.components.filter(c=>c.definitionId!=='teaching-source');
+function single(){const p=defaultProject();p.configuration.fixedConnections=[];p.configuration.components=p.configuration.components.filter(c=>c.definitionId!=='teaching-source');
  for(const c of p.configuration.components)if(c.definitionId.endsWith('source')){c.definitionId=SOURCE;delete c.parameters;delete c.state;}return p;}
 const external=(id,definitionId=SOURCE)=>({id,definitionId,definitionVersion:1,placement:null});
 
@@ -34,8 +34,7 @@ test('zero-source editable drafts never receive implicit power equipment',()=>{
  const r=createProjectRuntime(p);try{r.simulation.start();assert.deepEqual(r.simulation.circuit().sources,[]);assert.deepEqual(r.simulation.circuit().threePhaseSources,[]);}finally{r.dispose();}
 });
 test('A10 source is active in test mode even with QF1 OFF; real contacts alone isolate its outputs',()=>{
- const r=createProjectRuntime(single());try{
-  for(let i=1;i<=3;i++)r.connect({component:'MAIN',terminal:`L${i}`},{component:'QF1',terminal:`L${i}`});
+ const r=createProjectRuntime(defaultProject());try{
   r.simulation.start();const c=r.simulation.circuit(),s=r.simulation.snapshot();assert.equal(s.result.status,'stable');
   assert.deepEqual(c.sources,[]);assert.equal(c.threePhaseSources.length,1);assert.equal(c.threePhaseSources[0].enabled,true);assert.equal(c.threePhaseSources[0].lineToLine.length,3);
   const net=e=>s.result.evaluation.nets.find(n=>n.endpoints.some(p=>p.component===e[0]&&p.terminal===e[1])).id;

@@ -3,7 +3,7 @@ import type {ProjectDocument} from './contracts.ts';
 import {PROJECT_LIMITS} from './contracts.ts';
 import {validateProject,connectionKey} from './validation.ts';
 import {buildProjectModel} from './model.ts';
-import {fixedAssemblyWires} from './assemblies.ts';
+import {fixedProjectWires} from './fixed-wiring.ts';
 import {captureProjectInputs} from './catalog.ts';
 import {projectEquipment} from './equipment.ts';
 import {disposeProjectTree} from './resources.ts';
@@ -25,7 +25,7 @@ export class ProjectRuntime {
     this.front=new Set([...this.components.values()].filter(c=>c.root.parent===this.flap).map(c=>c.id));
     this.routing=new WiringController(this.world,this.components,{canEdit:()=>!this.disposed&&!this.locked&&this.simulation.canEdit});
     this.simulation=new ProjectSimulationController(this.components,()=>this.routing.wires,
-      {equipment:projectEquipment(this.project.configuration),fixedWires:fixedAssemblyWires(this.project.configuration),canInteract:()=>!this.locked&&!this.disposed});
+      {equipment:projectEquipment(this.project.configuration),fixedWires:fixedProjectWires(this.project.configuration),canInteract:()=>!this.locked&&!this.disposed});
   }
   get world(){return this.model.world;}
   get components(){return this.model.components;}

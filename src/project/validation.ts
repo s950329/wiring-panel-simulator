@@ -8,7 +8,7 @@ export function parseProject(source: string): ProjectDocument {return validatePr
 export function validateProject(value: unknown): ProjectDocument {
   const d=record(value,'project',['format','schemaVersion','name','configuration','connections']);
   requireField(d.format==='wiring-panel-project','format','不支援此格式');requireField(d.schemaVersion===1,'schemaVersion','不支援此版本');
-  const raw=record(d.configuration,'configuration',['units','board','operationPanel','rails','ducts','components','assemblies','panelGateway']);
+  const raw=record(d.configuration,'configuration',['units','board','operationPanel','rails','ducts','components','assemblies','panelGateway','fixedConnections']);
   const ids=new Set<string>();
   const id=(v:unknown,path:string)=>{const s=identifier(v,path);requireField(!ids.has(s),path,'重複 ID');ids.add(s);return s;};
   const u=record(raw.units,'configuration.units',['position','rotation']);
@@ -81,9 +81,15 @@ export function validateProject(value: unknown): ProjectDocument {
   const pairs=new Set(fixedAssemblyWires(configuration).map(connectionKey));
   const endpoint=(v:unknown,path:string)=>{const e=record(v,path,['component','terminal']),component=identifier(e.component,`${path}.component`),terminal=text(e.terminal,`${path}.terminal`);
     requireField(endpointSet.has(`${component}:${terminal}`),path,`找不到端子 ${component}:${terminal}`);return {component,terminal};};
-  const connections:Connection[]=array(d.connections,'connections',PROJECT_LIMITS.connections).map((v,i)=>{
-    const path=`connections[${i}]`,w=record(v,path,['from','to']);const connection={from:endpoint(w.from,`${path}.from`),to:endpoint(w.to,`${path}.to`)};
+  const readConnection=(v:unknown,path:string):Connection=>{
+    const w=record(v,path,['from','to']);const connection={from:endpoint(w.from,`${path}.from`),to:endpoint(w.to,`${path}.to`)};
     const key=connectionKey(connection);requireField(key.split('|')[0]!==key.split('|')[1],path,'不可自接相同端子');requireField(!pairs.has(key),path,'重複接線或與固定組裝導體重複');pairs.add(key);
+    return connection;
+  };
+  if(raw.fixedConnections!==undefined)configuration.fixedConnections=array(raw.fixedConnections,'configuration.fixedConnections',PROJECT_LIMITS.connections)
+    .map((v,i)=>readConnection(v,`configuration.fixedConnections[${i}]`));
+  const connections:Connection[]=array(d.connections,'connections',PROJECT_LIMITS.connections).map((v,i)=>{
+    const path=`connections[${i}]`,connection=readConnection(v,path);
     const a=mounts.get(connection.from.component),b=mounts.get(connection.to.component);
     if(a&&b&&a.mountId!==b.mountId)requireField(panelGateway,path,'跨操作板接線須配置 panelGateway');return connection;
   });

@@ -74,12 +74,12 @@ test('original classroom control wires start, hold, stop and trip through MC1 si
  assert.equal(lit(trip,'HL3'),true);assert.equal(lit(trip,'BZ1'),true);
 });
 
-test('classroom project imports all original control endpoints, remains stopped and drives the actual controller with its explicit supply',async()=>{
+test('classroom project imports all original control endpoints, remains stopped and drives the actual controller with its fixed supply',async()=>{
  const {buildProject}=await import('../src/project/session.ts');
  const source=readFileSync(new URL('../examples/board-024-classroom.project.json',import.meta.url),'utf8');
  const p=JSON.parse(source);
  assert.deepEqual(p.connections.slice(0,22),board.connections);
- assert.equal(p.connections.length,25);
+ assert.equal(p.connections.length,22);assert.equal(p.configuration.fixedConnections.length,3);
  const {runtime}=await buildProject(source);
  try{
   assert.equal(runtime.panelOpen,false);

@@ -203,3 +203,10 @@ ThreeComponentView 在建立時即把四顆指示燈設為熄滅材質，原始�
 按鈕的電性配對改為 NO 2/3、NC 1/4，`components.ts` 同步顯示 ID 與功能；模型不依 PB3／PB5 名稱或帽色判斷接點。內建教學接線的舊 PB 1/3 端點校正，但匯入器不做推測性遷移，保留使用者既有物理端點。使用者課堂案例的原始 22 條線另存固定 fixture，測試包含視野歸正投影、接點真值、隔離、自保、停止優先、過載及實際匯入控制器。
 
 `examples/board-024-classroom.project.json` 在原始控制線後追加三條明示進線，QF1 初始 OFF；沒有自動接電、馬達捷徑或辨識答案的特殊分支。仍以原生路由重建並驗證操作板收合。
+
+
+## WIRE-R16：設備固定進線
+
+`configuration.fixedConnections` 明示設備預接線，與可編輯的 `connections` 分開保存。`fixedProjectWires()` 合併預接線及原有組裝銅片給 runtime；MC→TH 幾何仍只使用 `fixedAssemblyWires()`。預設盤、空盤範例及兩個課堂範例均配置 MAIN→QF1 三條固定進線，仍只有一個來源。固定線不進使用者配線順序、刪除或復原；QF 接點照常隔離下游。
+
+`readProject()` 在正常驗證成功後，才對缺新欄位且結構完整吻合 stock BOARD 024 的舊專案呼叫 `upgradeClassroomInlet()`。比對不看名稱、狀態、參數及清單順序；補上固定進線時只移除相同的舊手動進線，保留其他端點及錯線並回報說明。新版重複接線仍拒絕，自訂盤與明示空固定清單不遷移；通用驗證與求解本身不推導供電。

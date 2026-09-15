@@ -44,7 +44,7 @@ test('native routing checkpoints cancel before publishing any geometry',()=>{
 
 test('rotated and translated operation panel routes through its configured gateway and closes without lost anchors',()=>{
   const p=defaultProject(),cfg=p.configuration;
-  cfg.components=cfg.components.filter(c=>['TB1','PB3'].includes(c.id));cfg.assemblies=[];cfg.rails=[];cfg.ducts=[];
+  cfg.components=cfg.components.filter(c=>['TB1','PB3'].includes(c.id));cfg.assemblies=[];cfg.rails=[];cfg.ducts=[];cfg.fixedConnections=[];
   cfg.operationPanel.state.open=true;
   const turn=([x,y,z])=>[400+(z-320),y,320-(x-400)];
   cfg.operationPanel.position=turn(cfg.operationPanel.position);cfg.operationPanel.rotationY=90;
@@ -59,7 +59,7 @@ test('rotated and translated operation panel routes through its configured gatew
 });
 test('a panel-only circuit without a gateway still uses native panel-side routing',()=>{
   const p=defaultProject(),c=p.configuration;c.components=c.components.filter(c=>['PB3','PB5'].includes(c.id));
-  c.assemblies=[];c.panelGateway=null;c.rails=[];c.ducts=[];c.operationPanel.state.open=true;
+  c.assemblies=[];c.panelGateway=null;c.rails=[];c.ducts=[];c.fixedConnections=[];c.operationPanel.state.open=true;
   const m=createProjectRuntime(p);assert.deepEqual(m.connect(ep('PB3','1'),ep('PB5','3')).viaDucts,[]);
   m.movePanel(false);m.dispose();
 });

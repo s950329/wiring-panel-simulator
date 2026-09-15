@@ -472,6 +472,11 @@ const project: ProjectDocument = {
         "hostId": "MC1"
       }
     ],
+    "fixedConnections": [
+      {"from":{"component":"MAIN","terminal":"L1"},"to":{"component":"QF1","terminal":"L1"}},
+      {"from":{"component":"MAIN","terminal":"L2"},"to":{"component":"QF1","terminal":"L2"}},
+      {"from":{"component":"MAIN","terminal":"L3"},"to":{"component":"QF1","terminal":"L3"}}
+    ],
     "panelGateway": {
       "panelId": "operation-panel",
       "component": "TB1",

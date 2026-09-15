@@ -20,11 +20,15 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
     <div class="simulation-results" aria-label="負載供電狀態" aria-live="polite"></div>
     <div class="simulation-explanations" aria-label="供電原因與端子定位"></div>
     <p class="simulation-note">本盤只有一組外接電源，按正確接線由總開關控制下游供斷電；MC 狀態綠燈不保證馬達三相完整。指示燈亮光位於操作板正面，請收合操作板查看。外接卡片是教學設備。</p>
-    <details class="assembly-links"><summary>固定組裝連接</summary><div></div></details>`;
+    <details class="assembly-links"><summary>固定預接線與銅片</summary><div></div></details>`;
   container.prepend(panel);
   const find = <T extends Element>(selector: string): T => {const e = panel.querySelector<T>(selector); if (!e) throw new Error(`缺少介面 ${selector}`); return e;};
   const start = find<HTMLButtonElement>('[data-sim-start]'), stop = find<HTMLButtonElement>('[data-sim-stop]');
   start.onclick = handlers.start; stop.onclick = handlers.stop;
+  const fixedWires=simulation.snapshot().fixedWires;
+  const sourceIds=new Set(simulation.equipment.filter(e=>e.definitionId.endsWith('source')).map(e=>e.id));
+  const supplyWires=fixedWires.filter(w=>sourceIds.has(w.from.component)||sourceIds.has(w.to.component));
+  const supplyTargets=[...new Set(supplyWires.map(w=>sourceIds.has(w.from.component)?w.to.component:w.from.component))];
   for (const equipment of simulation.equipment) {
     const card = document.createElement('div'); card.className = 'equipment-card'; card.dataset.equipment = equipment.id;
     const heading = document.createElement('strong'); heading.textContent = `${equipment.id} · ${equipment.label}`;
@@ -34,13 +38,16 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
       button.setAttribute('aria-label', `${equipment.id}:${terminal}`); button.dataset.externalTerminal = `${equipment.id}:${terminal}`;
       button.onclick = () => handlers.pick({component: equipment.id, terminal}); terminals.append(button);
     }
-    card.append(heading, terminals); find('.equipment-cards').append(card);
+    card.append(heading, terminals);
+    const wired=supplyWires.filter(w=>w.from.component===equipment.id||w.to.component===equipment.id);
+    if(wired.length){const info=document.createElement('p');info.className='simulation-note';info.textContent=`${wired.length} 條電源線已固定預接，可在下方清單查看端點。`;card.append(info);}
+    find('.equipment-cards').append(card);
   }
   const assembly = find('.assembly-links div');
-  for (const wire of simulation.snapshot().fixedWires) {
+  for (const wire of fixedWires) {
     const p = document.createElement('p'); p.textContent = `${wire.from.component}:${wire.from.terminal} ↔ ${wire.to.component}:${wire.to.terminal}`; assembly.append(p);
   }
-  const note = document.createElement('p'); note.textContent = '以上是此教學配置明示的固定連接，對應盤面銅片；非由外觀推算。'; assembly.append(note);
+  const note = document.createElement('p'); note.textContent = '以上是設備預先接好的電線與組裝銅片，不列入練習接線，也不會隨刪除練習線而移除。'; assembly.append(note);
   let previousMode = simulation.mode;
   function render(): void {
     const s = simulation.snapshot(); panel.dataset.simulationMode = s.mode;
@@ -61,7 +68,8 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
         row.append(id, status); results.append(row);
       }
     } else {
-      const p = document.createElement('p'); p.textContent = s.mode === 'halted' ? '本次結果無法成立，線圈及負載輸出已清除。' : '接好進線與盤內回路，再按「開始測試」；模式只管理運算，不是另一顆電源開關。'; results.append(p);
+      const p = document.createElement('p'); p.textContent = s.mode === 'halted' ? '本次結果無法成立，線圈及負載輸出已清除。' : supplyWires.length ?
+        `已有 ${supplyWires.length} 條固定電源線接至 ${supplyTargets.join('、')}，可對照下方端點清單；完成回路後按「開始測試」，再操作總開關。` : '接好進線與盤內回路，再按「開始測試」。'; results.append(p);
     }
     const explanations = find('.simulation-explanations');
     const expanded = new Set([...explanations.querySelectorAll<HTMLDetailsElement>('details[open]')].map(e => e.dataset.explanation));
@@ -89,7 +97,7 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
           for (const contact of entry.openContacts) for (const endpoint of contact.endpoints)
             details.append(locate(endpoint, [], `${contact.component} ${contact.id} · ${endpoint.terminal}`));
         }
-        const note = document.createElement('p'); note.className = 'simulation-note'; note.textContent = '高亮顯示同一導通網路的相連導線，包含分支；不代表電流方向。E 編號與固定銅片連接請對照端點清單。'; details.append(note);
+        const note = document.createElement('p'); note.className = 'simulation-note'; note.textContent = '高亮顯示同一導通網路的相連導線，包含分支；不代表電流方向。E 編號與固定預接線請對照端點清單。'; details.append(note);
       } else for (const endpoint of entry.endpoints)
         details.append(locate(endpoint, entry.wireIds, `定位 ${endpoint.component}:${endpoint.terminal} · 相關接線`));
       explanations.append(details);

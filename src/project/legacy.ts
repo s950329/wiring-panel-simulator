@@ -4,6 +4,7 @@ import {safeJSON,record,array,text,finite,boolean,requireField} from './fields.t
 import {validateProject,connectionKey} from './validation.ts';
 import {definitionInfo,normalizeInputs} from './catalog.ts';
 import {mountPoint,assemblySlots,fixedAssemblyWires} from './assemblies.ts';
+import {upgradeClassroomInlet} from './classroom-migration.ts';
 
 const revisions=new Set(['WIRE-R8','WIRE-R9','WIRE-R10','WIRE-R11','WIRE-R12']);
 interface OldPlacement {id:string;definitionId:string;x:number;y:number;z:number;rotation:number;parentId?:string}
@@ -101,7 +102,7 @@ function convertSnapshot(value:Record<string,unknown>):{project:ProjectDocument;
 }
 export function readProject(source:string):{project:ProjectDocument;convertedLegacy:boolean;conversionNotes:string[]}{
  const value=record(safeJSON(source),'檔案');
- if(value.format==='wiring-panel-project')return{project:validateProject(value),convertedLegacy:false,conversionNotes:[]};
+ if(value.format==='wiring-panel-project')return{...upgradeClassroomInlet(validateProject(value)),convertedLegacy:false};
  if(value.format==='wiring-panel-snapshot')return{...convertSnapshot(value),convertedLegacy:true};
  throw new Error('format：不支援的專案格式；除錯資料不能當作專案匯入');
 }

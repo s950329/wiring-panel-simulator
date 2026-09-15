@@ -6,7 +6,7 @@ const fixture=async name=>readFile(new URL(`../examples/${name}`,import.meta.url
 function expectState(runtime,coil,motor,alarm){const result=runtime.simulation.snapshot().result;assert.equal(result.status,'stable',JSON.stringify(result.diagnostics));assert.equal(result.coils.MC1,coil);assert.equal(result.evaluation.motors.find(m=>m.component==='M1').state,motor?'powered':'unpowered');for(const [id,on]of [['HL4',coil],['HL3',alarm],['BZ1',alarm]])assert.equal(runtime.components.get(id).electricalOutput.energized,on,id);}
 function geometry(runtime){const accepted=[];const solids=collectSolids(runtime.world);for(const w of runtime.routing.wires){assert.ok(new CollisionWorld(solids,accepted).validate(w.points),w.id);assert.ok(validateSelf(w.points),w.id);accepted.push(w);}}
 test('A04 real native reconstruction, two panel cycles, complete electrical sequence and project round trip',async()=>{
- const {runtime}=await buildProject(await fixture('a04-motor-start.project.json'));assert.equal(runtime.panelOpen,false);assert.equal(runtime.routing.wires.length,28);assert.equal(runtime.simulation.snapshot().externalWires.length,6);assert.equal(runtime.simulation.snapshot().fixedWires.length,3);geometry(runtime);
+ const {runtime}=await buildProject(await fixture('a04-motor-start.project.json'));assert.equal(runtime.panelOpen,false);assert.equal(runtime.routing.wires.length,28);assert.equal(runtime.simulation.snapshot().externalWires.length,3);assert.equal(runtime.simulation.snapshot().fixedWires.length,6);geometry(runtime);
  for(let i=0;i<2;i++)for(const open of [true,false]){runtime.movePanel(open);geometry(runtime);}
  const s=runtime.simulation;s.start();expectState(runtime,false,false,false);s.operate('PB3',{type:'press'});expectState(runtime,false,false,false);s.operate('PB3',{type:'release'});s.operate('QF1',{type:'toggle'});s.operate('PB3',{type:'press'});expectState(runtime,true,true,false);s.operate('PB3',{type:'release'});expectState(runtime,true,true,false);
  s.operate('PB5',{type:'press'});expectState(runtime,false,false,false);s.operate('PB5',{type:'release'});expectState(runtime,false,false,false);s.operate('PB3',{type:'press'});s.operate('PB3',{type:'release'});expectState(runtime,true,true,false);
@@ -30,7 +30,7 @@ test('the full motor project can rename every instance including its source, mot
  for(const a of p.configuration.assemblies)a.hostId=rename(a.hostId);
  for(const c of p.configuration.components)c.id=rename(c.id);
  p.configuration.panelGateway.component=rename(p.configuration.panelGateway.component);
- for(const w of p.connections){w.from.component=rename(w.from.component);w.to.component=rename(w.to.component);}
+ for(const w of [...p.connections,...p.configuration.fixedConnections]){w.from.component=rename(w.from.component);w.to.component=rename(w.to.component);}
  const {runtime}=await buildProject(JSON.stringify(p));const s=runtime.simulation;s.start();s.operate('renamed-QF1',{type:'toggle'});s.operate('renamed-PB3',{type:'press'});s.operate('renamed-PB3',{type:'release'});
  const r=s.snapshot().result;assert.equal(r.status,'stable');assert.equal(r.coils['renamed-MC1'],true);assert.equal(r.evaluation.motors.find(m=>m.component==='renamed-M1').state,'powered');
  assert.equal(s.circuit().components.some(c=>['MC1','CONTROL','MAIN','M1'].includes(c.id)),false);s.operate('renamed-TH1',{type:'trip'});assert.equal(runtime.components.get('renamed-HL3').electricalOutput.energized,true);runtime.dispose();

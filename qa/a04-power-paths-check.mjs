@@ -7,7 +7,7 @@ function solve(c,patch={},previous={}){const r=settleCircuit(c,{QF1:{on:true},PB
 const load=(r,id)=>r.evaluation.loads.find(l=>l.component===id).state==='energized';const motor=r=>r.evaluation.motors.find(m=>m.component==='M1');
 test('A09 saved A04 has one source, four physically connected fuse terminals and no source toggle settings',()=>{
  const c=circuit();assert.deepEqual(c.sources,[]);assert.equal(c.threePhaseSources.length,1);assert.equal(c.threePhaseSources[0].lineToLine.length,3);
- assert.equal(project.connections.length,34);assert.equal(project.configuration.components.find(c=>c.id==='QF1').state.on,false);
+ assert.equal(project.connections.length,31);assert.equal(project.configuration.fixedConnections.length,3);assert.equal(project.configuration.components.find(c=>c.id==='QF1').state.on,false);
  for(const t of ['F1-IN','F1-OUT','F2-IN','F2-OUT']){const w=project.connections.filter(w=>[w.from,w.to].some(e=>e.component==='FU1'&&e.terminal===t));assert.equal(w.length,1,t);assert.ok(![w[0].from,w[0].to].some(e=>['MAIN','CONTROL','M1'].includes(e.component)),t);}
  for(const [q,f]of [['T1','F1-IN'],['T3','F2-IN']])assert.ok(project.connections.some(w=>[w.from,w.to].some(e=>e.component==='QF1'&&e.terminal===q)&&[w.from,w.to].some(e=>e.component==='FU1'&&e.terminal===f)));
  assert.ok(!JSON.stringify(project).includes('CONTROL'));assert.ok(!project.configuration.components.some(c=>c.parameters?.enabled!==undefined||c.state?.available!==undefined));

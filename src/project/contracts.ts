@@ -23,6 +23,8 @@ export interface ProjectConfiguration {
   board: Board; operationPanel: OperationPanel | null;
   rails: Channel[]; ducts: Channel[]; components: ProjectComponent[]; assemblies: Assembly[];
   panelGateway: Gateway | null;
+  /** Equipment wiring, independent of editable student connections. Omitted on older files. */
+  fixedConnections?: Connection[];
 }
 export interface Connection {from: Endpoint; to: Endpoint}
 export interface ProjectDocument {
