@@ -1,0 +1,58 @@
+name: Prepare verified TypeScript source
+on:
+  push:
+    branches: [chore/typescript-source-transfer]
+permissions:
+  contents: write
+jobs:
+  restore-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: project
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: transfer
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2e4ea79b0e17c66b07f79660138e848957a314dc
+          path: project
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+          cache-dependency-path: project/package-lock.json
+      - name: Reproduce the original formatter dictionary
+        run: |
+          npm ci
+          node ../transfer/migration-transfer/restore.cjs dictionary
+      - name: Restore and verify the exact locally tested source
+        run: |
+          cat ../transfer/migration-transfer/part-1.zst ../transfer/migration-transfer/part-2.zst > "$RUNNER_TEMP/source.zst"
+          echo "848114ad904754972532deb26b2a8293a9d8b3f9359e4d2f24c9d33887f5d9e6  $RUNNER_TEMP/source.zst" | sha256sum -c -
+          zstd -d --patch-from="$RUNNER_TEMP/dictionary.json" "$RUNNER_TEMP/source.zst" -o "$RUNNER_TEMP/changes.json"
+          node ../transfer/migration-transfer/restore.cjs apply
+      - name: Check the migrated lockfile and compiler
+        run: |
+          npm ci
+          npm run typecheck
+          test "$(git write-tree)" = 76ac10f030374f4086308374d8e1474df783b533
+      - name: Store candidate commit without updating main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'refactor: migrate JavaScript and Python to strict TypeScript' -m 'Migrate all authored app, routing, tools and QA modules. Replace Python browser checks with optional Node Playwright scripts; update strict compiler coverage and guides. Preserve WIRE-R20, project formats and geometry fixtures.' -m 'Local verification: baseline 232/232; migrated 235/235 with no skips; clean npm ci, strict typecheck, production/standalone builds, CLI reconstruction and no-overwrite checks. Browser/WebGL execution remains owner-managed and was not run. Source transfer is hash-verified; no transfer files are included in this commit.'
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git push origin HEAD:refs/heads/refactor/typescript-migration
+          unset GIT_CONFIG_VALUE_0 GIT_CONFIG_KEY_0 GIT_CONFIG_COUNT GH_TOKEN
+          echo "Source commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Source tree: 76ac10f030374f4086308374d8e1474df783b533' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Main is unchanged; publication requires a separate non-forced ref update.' >> "$GITHUB_STEP_SUMMARY"
