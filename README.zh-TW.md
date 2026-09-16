@@ -6,7 +6,7 @@
 
 > **本專案持續開發中。** 僅供教育與訓練用途。
 
-**[線上 Demo]([https://leo-wiring-panel.leochien0808.chatgpt.site](https://wiring-panel-simulator.pages.dev))**
+**[線上 Demo](https://wiring-panel-simulator.pages.dev)**
 
 ## 為什麼做這個專案？
 
