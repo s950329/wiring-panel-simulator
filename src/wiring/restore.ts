@@ -1,11 +1,11 @@
 import {Group, Vector3} from 'three';
 import type {ComponentRuntime} from '../core/contracts.ts';
 import type {RoutedWire} from '../application/board-snapshot.ts';
-import {describeTerminal, validateSelf, panelSide, panelCollision} from './router.js';
+import {describeTerminal, validateSelf, panelSide, panelCollision} from './router.ts';
 import {getRoutingContext} from './context.ts';
-import {CollisionWorld, distance} from './collision.js';
-import {collectSolids} from './solids.js';
-import {wireMesh} from './controller.js';
+import {CollisionWorld, distance} from './collision.ts';
+import {collectSolids} from './solids.ts';
+import {wireMesh, type WireGroup} from './controller.ts';
 import {createPanelRegion} from './panel-region.ts';
 
 
@@ -25,10 +25,10 @@ export function prepareWireRestore(world: Group, components: ReadonlyMap<string,
     }
     accepted.push(w);
   }
-  const group = new Group(); group.name = 'user-wires'; group.userData.wireGroup = true;
+  const group = new Group() as WireGroup; group.name = 'user-wires'; group.userData.wireGroup = true;
   try {for (const wire of wires) group.add(wireMesh(wire));}
   catch (error) {disposeWireGroup(group); throw error;}
-  return {group, wires: structuredClone(wires)};
+  return {group, wires: structuredClone([...wires])};
 }
 export function disposeWireGroup(group: Group): void {
   for (const object of group.children) {const mesh = object as ReturnType<typeof wireMesh>; mesh.geometry.dispose(); mesh.material.dispose();}

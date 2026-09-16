@@ -7,7 +7,7 @@ The existing Sites source history through `3291294af2dace9de8f3fe27d0d76357630f9
 For each update:
 
 1. Read `AGENTS.md` and `ARCHITECTURE.md`, inspect local status and GitHub `main`, and integrate concurrent changes.
-2. Change the shared application source and advance `src/revision.js` when application behavior changes.
+2. Change the shared application source and advance `src/revision.ts` when application behavior changes.
 3. Run `npm test`, regenerate the standalone HTML with `npm run offline`, and run `npm run build`.
 4. Commit and push the validated source to GitHub without force; verify the remote tree and commit.
 5. Push the same source tree to the existing Sites repository, package its build output, and publish. Verify successful deployment and report the GitHub commit link.

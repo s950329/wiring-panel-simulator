@@ -60,7 +60,7 @@ MC1 releases and the motor stops
 
 ### Requirements
 
-- A recent version of Node.js
+- Node.js 22 (CI uses 22.16.0)
 - npm
 - A modern browser with WebGL 2 and hardware acceleration
 
@@ -98,6 +98,8 @@ npm run offline          # Standalone HTML
 ```
 
 The application separates the **electrical model**, **routing logic**, and **3D presentation**, so core behavior can be tested without relying on WebGL.
+
+All authored application code, tools, and tests are **strict TypeScript**, including the optional Node Playwright browser checks; Python is not required. Browser JavaScript is generated during the build. See the [TypeScript development guide](docs/typescript-migration.md) for compiler coverage, CLI tools, and optional browser verification.
 
 For implementation details, see:
 

@@ -3,9 +3,9 @@ import type {ComponentRuntime} from '../core/contracts.ts';
 import type {Wire} from '../electrical/contracts.ts';
 import type {RoutedWire} from '../application/board-snapshot.ts';
 import {getRoutingContext,type RoutingContext} from './context.ts';
-import {routeWire,describeTerminal,validateSelf,panelSide,panelCollision} from './router.js';
-import {collectSolids} from './solids.js';
-import {CollisionWorld,distance} from './collision.js';
+import {routeWire,describeTerminal,validateSelf,panelSide,panelCollision} from './router.ts';
+import {collectSolids} from './solids.ts';
+import {CollisionWorld,distance} from './collision.ts';
 import {createPanelRegion} from './panel-region.ts';
 
 const endpointKey=(e:Wire['from'])=>`${e.component}:${e.terminal}`;

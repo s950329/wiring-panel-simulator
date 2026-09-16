@@ -60,7 +60,7 @@ MC1 釋放，馬達停止
 
 ### 環境需求
 
-- 較新的 Node.js
+- Node.js 22（CI 使用 22.16.0）
 - npm
 - 支援 WebGL 2 與硬體加速的現代瀏覽器
 
@@ -98,6 +98,8 @@ npm run offline          # 單一離線 HTML
 ```
 
 專案將 **電氣模型、走線邏輯與 3D 顯示** 分開，讓核心行為不需依賴 WebGL 也能自動測試。
+
+應用程式、工具與測試皆以 **strict TypeScript** 維護，包含選擇性執行的 Node Playwright 瀏覽器驗收，不再需要 Python。瀏覽器使用的 JavaScript 由建置產生。型別檢查範圍、工具命令與瀏覽器驗證方式，請參考 [TypeScript 開發指南](docs/typescript-migration.md)。
 
 實作細節請參考：
 

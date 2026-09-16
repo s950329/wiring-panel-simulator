@@ -2,7 +2,7 @@ import {Object3D, type Group} from 'three';
 import type {ComponentRuntime} from '../core/contracts.ts';
 import type {BoardViewState} from './board-snapshot.ts';
 import type {SimulationController} from './simulation.ts';
-import type {WiringController} from '../wiring/controller.js';
+import type {WiringController} from '../wiring/controller.ts';
 import {applyComponentState, parseBoardSnapshot} from './snapshot-validation.ts';
 import {prepareWireRestore, disposeWireGroup} from '../wiring/restore.ts';
 

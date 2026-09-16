@@ -1,5 +1,5 @@
 import {BufferGeometry,Material,Mesh,Texture,type Object3D} from 'three';
-import {isSharedGeometry,isSharedMaterial} from '../primitives.js';
+import {isSharedGeometry,isSharedMaterial} from '../primitives.ts';
 /** Dispose only project-owned assets. Renderer environment and primitive library remain shared. */
 export function disposeProjectTree(root:Object3D):void{
   const geometries=new Set<BufferGeometry>(),materials=new Set<Material>(),textures=new Set<Texture>();

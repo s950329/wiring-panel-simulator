@@ -21,7 +21,7 @@ Locale is **presentation state**, never project state. Do not serialize it into 
 
 User-authored project names and raw identifiers use `data-i18n-ignore` (or the existing `.id` identifier class). Text in input values, code/preformatted blocks and content-editable elements is not translated. Physical model nameplates/textures are unchanged, like the labels on real equipment. JSON structure, persistent names, IDs and canonical diagnostic data remain language independent.
 
-`src/wiring/panel.js` keeps its canonical prompt in application state instead of reading the translated DOM back as state. Follow that pattern for future controls.
+`src/wiring/panel.ts` keeps its canonical prompt in application state instead of reading the translated DOM back as state. Follow that pattern for future controls.
 
 ## Files
 
@@ -32,7 +32,7 @@ User-authored project names and raw identifiers use `data-i18n-ignore` (or the e
 - `src/i18n/messages.ts`: source-message formatting, exact/template matching, bounded caching and fallback.
 - `src/i18n/browser.ts`: the native select, document metadata and a scoped DOM adapter for the existing framework-free views.
 
-The DOM adapter is a compatibility boundary for this application's existing JS/TS views, not a general-purpose machine translator. Only registered messages/templates are translated. It remembers each node's canonical source, so switching back to Chinese does not depend on reverse-translating English. Dynamically updated statuses and diagnostics use the same catalog.
+The DOM adapter is a compatibility boundary for this application's existing TypeScript views, not a general-purpose machine translator. Only registered messages/templates are translated. It remembers each node's canonical source, so switching back to Chinese does not depend on reverse-translating English. Dynamically updated statuses and diagnostics use the same catalog.
 
 ## Add a language
 
@@ -64,15 +64,17 @@ For new user-visible copy, add its source key and English translation. The canon
 
 ## Verification
 
-`npm test` includes `qa/i18n-check.mjs` and `qa/i18n-catalog-check.mjs`. They verify preference precedence, language variants, blocked storage, source restoration, added-language fallback, placeholder parity, catalog coverage, real component presentations and electrical/validation diagnostics without WebGL.
+`npm test` includes `qa/i18n-check.ts` and `qa/i18n-catalog-check.ts`. They verify preference precedence, language variants, blocked storage, source restoration, added-language fallback, placeholder parity, catalog coverage, real component presentations and electrical/validation diagnostics without WebGL.
 
-Optional DOM-only checks use Python Playwright and Chromium:
+Optional DOM-only checks use the pinned Node Playwright development dependency and Chromium (no Python required):
 
 ```sh
+npx playwright install chromium
 npm run dev -- --host 127.0.0.1
-python qa/i18n-browser-check.py http://127.0.0.1:5173
+# In another terminal:
+npm run test:browser:i18n -- http://127.0.0.1:5173
 ```
 
-These check node identity, event handlers, preserved input/expanded details, accessibility labels, dynamic status text, automatic mode and phone-width overflow. They do not replace the owner's full visual/WebGL acceptance.
+These check node identity, event handlers, preserved input/expanded details, accessibility labels, dynamic status text, automatic mode and phone-width overflow. They do not replace the owner's full visual/WebGL acceptance. A server-free variant bundles the actual TypeScript adapter with esbuild: `npm run test:browser:i18n -- --offline .`. Use `CHROMIUM_EXECUTABLE` to select an existing compatible Chromium instead of the managed installation.
 
 Run `npm run build` after changes. Its offline step includes both catalogs in the standalone HTML and verifies the freshly generated inline scripts; do not maintain a separate translated HTML fork.

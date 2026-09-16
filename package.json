@@ -6,18 +6,23 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run offline && vite build",
-    "test": "npm run typecheck && node --import tsx --test --test-concurrency=2 qa/i18n-check.mjs qa/i18n-catalog-check.mjs qa/geometry-check.mjs qa/mc1-correction.mjs qa/wiring-check.mjs qa/component-check.mjs qa/operation-panel-check.mjs qa/front-controls-check.mjs qa/electrical-check.mjs qa/electrical-model-check.mjs qa/electrical-simulator-check.mjs qa/electrical-power-check.mjs qa/electrical-dol-check.mjs qa/simulation-application-check.mjs qa/simulation-routing-check.mjs qa/wiring-panel-events-check.mjs qa/electrical-explanation-check.mjs qa/panel-route-retry-check.mjs qa/board-snapshot-check.mjs qa/wire-highlight-check.mjs qa/board-import-check.mjs qa/snapshot-import-events-check.mjs qa/lamp-contrast-check.mjs qa/snapshot-reroute-check.mjs qa/project-contract-check.mjs qa/project-runtime-check.mjs qa/project-routing-check.mjs qa/project-session-check.mjs qa/project-files-check.mjs qa/project-view-check.mjs qa/project-acceptance-check.mjs qa/electrical-line-to-line-check.mjs qa/project-single-source-check.mjs qa/legacy-single-source-check.mjs qa/a04-power-paths-check.mjs qa/classroom-contacts-check.mjs qa/prewired-supply-check.mjs qa/panel-planner-check.mjs qa/panel-backside-check.mjs qa/panel-grid-check.mjs qa/panel-grid-variants-check.mjs qa/panel-candidate-variants-check.mjs",
-    "test:electrical": "npm run typecheck && node --import tsx --test qa/electrical-check.mjs qa/electrical-simulator-check.mjs qa/electrical-power-check.mjs qa/electrical-dol-check.mjs qa/electrical-explanation-check.mjs qa/electrical-line-to-line-check.mjs",
-    "offline": "npm run typecheck && node scripts/build-offline.mjs",
+    "test": "npm run typecheck && node --import tsx --test --test-concurrency=2 qa/i18n-check.ts qa/i18n-catalog-check.ts qa/geometry-check.ts qa/mc1-correction.ts qa/wiring-check.ts qa/component-check.ts qa/operation-panel-check.ts qa/front-controls-check.ts qa/electrical-check.ts qa/electrical-model-check.ts qa/electrical-simulator-check.ts qa/electrical-power-check.ts qa/electrical-dol-check.ts qa/simulation-application-check.ts qa/simulation-routing-check.ts qa/wiring-panel-events-check.ts qa/electrical-explanation-check.ts qa/panel-route-retry-check.ts qa/board-snapshot-check.ts qa/wire-highlight-check.ts qa/board-import-check.ts qa/snapshot-import-events-check.ts qa/lamp-contrast-check.ts qa/snapshot-reroute-check.ts qa/project-contract-check.ts qa/project-runtime-check.ts qa/project-routing-check.ts qa/project-session-check.ts qa/project-files-check.ts qa/project-view-check.ts qa/project-acceptance-check.ts qa/electrical-line-to-line-check.ts qa/project-single-source-check.ts qa/legacy-single-source-check.ts qa/a04-power-paths-check.ts qa/classroom-contacts-check.ts qa/prewired-supply-check.ts qa/panel-planner-check.ts qa/panel-backside-check.ts qa/panel-grid-check.ts qa/panel-grid-variants-check.ts qa/panel-candidate-variants-check.ts qa/typescript-migration-check.ts",
+    "test:electrical": "npm run typecheck && node --import tsx --test qa/electrical-check.ts qa/electrical-simulator-check.ts qa/electrical-power-check.ts qa/electrical-dol-check.ts qa/electrical-explanation-check.ts qa/electrical-line-to-line-check.ts",
+    "offline": "npm run typecheck && node --import tsx scripts/build-offline.ts",
     "typecheck": "tsc --noEmit",
-    "reroute": "node --import tsx scripts/reroute-snapshot.mjs",
-    "rebuild-project": "node --import tsx scripts/rebuild-project.mjs"
+    "reroute": "node --import tsx scripts/reroute-snapshot.ts",
+    "rebuild-project": "node --import tsx scripts/rebuild-project.ts",
+    "test:browser:i18n": "node --import tsx qa/i18n-browser-check.ts",
+    "test:browser:project": "node --import tsx qa/project-browser-check.ts"
   },
   "dependencies": {
     "three": "0.180.0"
   },
   "devDependencies": {
+    "@types/node": "22.16.0",
     "@types/three": "0.180.0",
+    "esbuild": "0.24.2",
+    "playwright": "1.55.0",
     "tsx": "4.20.6",
     "typescript": "5.9.3",
     "vite": "6.1.0"

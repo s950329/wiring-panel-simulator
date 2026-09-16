@@ -1,0 +1,158 @@
+import {stateOf} from './helpers/fixture-types.ts';
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as T from 'three';
+import {importBoardSnapshot} from '../src/application/board-import.ts';
+import {createBoardSnapshot} from '../src/application/board-snapshot.ts';
+import {SimulationController, type SimulationMode} from '../src/application/simulation.ts';
+import type {BehaviorKind, ViewType} from '../src/core/contracts.ts';
+import type {DiagnosticCode, InputValue, Load} from '../src/electrical/contracts.ts';
+import {buildModel} from '../src/scene.ts';
+import {WiringController} from '../src/wiring/controller.ts';
+import {mutableClone, required} from './helpers/fixture-types.ts';
+if (!globalThis.document) Object.defineProperty(globalThis, 'document', {configurable: true, writable: true, value: { createElement: () => ({ getContext: () => ({ fillRect() { }, strokeRect() { }, fillText() { } }) }) }});
+const ep = (component: string, terminal: string) => ({ component, terminal });
+function make(inspectMC1 = false) {
+    const m = buildModel(new T.Scene(), { inspectMC1 });
+    const routing = new WiringController(m.world, m.components);
+    const simulation = inspectMC1 ? null : new SimulationController(m.components, () => routing.wires);
+    return { ...m, routing, simulation, page: inspectMC1 ? 'component' as const : 'board' as const };
+}
+function capture(m: ReturnType<typeof make>) {
+    return mutableClone(createBoardSnapshot({ components: m.components, physicalWires: m.routing.snapshot(), simulation: m.simulation,
+        wiringSession: m.simulation ? { mode: 'connect', pending: null, busy: false, selectedWireId: m.routing.selected,
+            evidenceIds: [], undoOrder: [...m.routing.wires.map((w) => w.id), ...m.simulation.snapshot().externalWires.map((w) => w.id)], lastAttempt: null } : null,
+        view: { page: m.page, selectedComponent: 'MC1', selectedTerminal: 'A1', operationPanelOpen: m.flap.rotation.x > 1,
+            attachmentsShown: true, gridVisible: true, camera: { azimuth: -.6, elevation: .8, radius: 680, target: [4, 0, 20] },
+            worldTransform: { position: m.world.position.toArray(), quaternion: m.world.quaternion.toArray(), scale: m.world.scale.toArray() },
+            panelAngle: m.flap.rotation.x } }, new Date('2026-09-13T16:00:00Z')));
+}
+const load = (snapshot: unknown, target: ReturnType<typeof make>) => importBoardSnapshot(JSON.stringify(snapshot), target);
+test('exported board restores exact routes, IDs, persistent controls and source options, then remains editable', () => {
+    const m = make();
+    m.flap.rotation.x = Math.PI;
+    const first = m.routing.connect(ep('TB1', '41B'), ep('HL4', '1'));
+    m.routing.connect(ep('TB1', '42B'), ep('HL4', '2'));
+    m.routing.remove(first.id);
+    required(m.simulation).connectExternal(ep('CONTROL', 'L'), ep('TB1', '41A'));
+    required(m.simulation).connectExternal(ep('CONTROL', 'N'), ep('TB1', '42A'));
+    required(m.simulation).removeExternal('E1');
+    for (const [id, action] of [['QF1', { type: 'toggle' }], ['ES1', { type: 'emergency' }], ['TH1', { type: 'trip' }],
+        ['TH1', { type: 'setCurrent', value: 16.5 }], ['SA1', { type: 'setPosition', value: 2 }], ['HL1', { type: 'lamp' }]] as const)
+        required(m.components.get(id)).dispatch(action);
+    const snapshot = capture(m);
+    snapshot.revision = 'WIRE-R8';
+    required(snapshot.simulation).power.main = false;
+    const target = make();
+    target.routing.connect(ep('MC1', 'A1'), ep('TB2', '1A'));
+    const result = load(snapshot, target);
+    assert.deepEqual(target.routing.snapshot(), snapshot.wiring.physical);
+    assert.deepEqual(required(target.simulation).snapshot().externalWires, snapshot.wiring.external);
+    assert.equal(stateOf(required(target.components.get('ES1')), 'emergency').latched, true);
+    assert.equal(stateOf(required(target.components.get('QF1')), 'toggle').on, true);
+    assert.equal(stateOf(required(target.components.get('TH1')), 'overload').current, 16.5);
+    assert.equal(stateOf(required(target.components.get('TH1')), 'overload').trip, true);
+    assert.equal(stateOf(required(target.components.get('SA1')), 'selector').position, 2);
+    assert.ok(required(required(target.components.get('HL1')).parts.color).emissiveIntensity > 0);
+    assert.equal(required(target.simulation).snapshot().power.main, false);
+    assert.equal(target.flap.rotation.x, Math.PI);
+    assert.deepEqual(result.view.camera.target, [4, 0, 20]);
+    for (const revision of ['WIRE-R9', 'WIRE-R10', 'WIRE-R11']) {
+        snapshot.revision = revision;
+        load(snapshot, target);
+    }
+    assert.equal(target.routing.connect(ep('TB1', '43B'), ep('HL3', '2')).id, 'W03');
+    assert.equal(required(target.simulation).connectExternal(ep('CONTROL', 'L'), ep('TB1', '43A')).id, 'E3');
+});
+test('running and halted snapshots import stopped without replaying outputs or held inputs', () => {
+    const m = make();
+    required(m.simulation).connectExternal(ep('CONTROL', 'L'), ep('HL4', '1'));
+    required(m.simulation).connectExternal(ep('CONTROL', 'N'), ep('HL4', '2'));
+    required(m.simulation).start();
+    required(m.simulation).operate('PB1', { type: 'press' });
+    const powered = capture(m), target = make();
+    load(powered, target);
+    assert.equal(required(target.simulation).mode, 'off');
+    assert.equal(required(target.simulation).snapshot().result, null);
+    assert.equal(required(target.components.get('HL4')).electricalOutput.mode, 'off');
+    assert.equal(required(required(target.components.get('HL4')).parts.color).emissiveIntensity, 0);
+    assert.equal(stateOf(required(target.components.get('PB1')), 'momentary').pressed, false);
+    required(target.simulation).start();
+    assert.equal(required(target.components.get('HL4')).electricalOutput.energized, true);
+    required(target.simulation).stop();
+    required(m.simulation).stop();
+    required(m.simulation).connectExternal(ep('CONTROL', 'L'), ep('CONTROL', 'N'));
+    required(m.simulation).start();
+    load(capture(m), target);
+    assert.equal(required(target.simulation).mode, 'off');
+    assert.equal(required(target.simulation).start().status, 'halted');
+});
+test('invalid files and geometry failures preserve old state, routes, pose, mesh and electrical data', () => {
+    const target = make();
+    target.routing.connect(ep('MC1', 'A1'), ep('TB2', '1A'));
+    required(target.components.get('ES1')).dispatch({ type: 'emergency' });
+    required(target.components.get('HL3')).dispatch({ type: 'lamp' });
+    required(target.components.get('HL3')).updateView(undefined, true);
+    const source = make();
+    source.flap.rotation.x = Math.PI;
+    source.routing.connect(ep('TB1', '42B'), ep('HL4', '2'));
+    const snapshot = capture(source), before = capture(target), mesh = target.routing.group.children[0];
+    const material = required(target.components.get('HL3')).parts.color;
+    const surface = () => [required(material).roughness, required(material).metalness, required(material).clearcoat, required(material).envMapIntensity];
+    const oldSurface = surface();
+    const cases: Array<(s: ReturnType<typeof capture>) => void> = [
+        s => { Object.assign(s, {schemaVersion: 99}); },
+        s => { s.revision = 'WIRE-R999'; },
+        s => { s.configuration.board.width = 999; },
+        s => { s.components.pop(); },
+        s => { s.components[0].placement.x += 1; },
+        s => { Object.assign(s.components[0].state, {on: 'yes'}); },
+        s => { s.wiring.physical[0].from.terminal = '999B'; },
+        s => { s.wiring.physical.push(s.wiring.physical[0]); },
+        s => { s.wiring.physical[0].points[0][1] += 3; },
+        s => { s.wiring.physical[0].points.splice(1, 0, [0, 0, 0]); },
+        s => { s.wiring.physical[0].points[1][1] = 1e300; },
+        s => { s.view.camera.radius = -4; },
+        s => { s.wiring.external = [{id:'E1',from:ep('CONTROL','BAD'),to:ep('HL4','1')}]; },
+    ];
+    for (const corrupt of cases) {
+        const bad = structuredClone(snapshot);
+        corrupt(bad);
+        assert.throws(() => load(bad, target));
+        assert.deepEqual(capture(target), before);
+        assert.equal(target.routing.group.children[0], mesh);
+        assert.deepEqual(surface(), oldSurface);
+    }
+    assert.throws(() => importBoardSnapshot('{broken', target));
+    assert.deepEqual(capture(target), before);
+});
+test('import protects an active destination and rejects a different page while accepting an isolated snapshot', () => {
+    const target = make(), snapshot = capture(target);
+    required(target.simulation).start();
+    const before = capture(target);
+    assert.throws(() => load(snapshot, target), /停止/);
+    assert.deepEqual(capture(target), before);
+    const isolated = make(true);
+    required(isolated.components.get('TH1')).dispatch({ type: 'trip' });
+    const single = capture(isolated), next = make(true);
+    load(single, next);
+    assert.equal(stateOf(required(next.components.get('TH1')), 'overload').trip, true);
+    required(target.simulation).stop();
+    assert.throws(() => load(single, target), /頁面|整盤|單獨/);
+});
+test('closed-panel geometry round trips and imported wires follow subsequent opening and closing', () => {
+    const m = make();
+    m.flap.rotation.x = Math.PI;
+    m.routing.connect(ep('TB1', '42B'), ep('HL4', '2'));
+    const front = new Set([...m.components.values()].filter(c => c.root.parent === m.flap).map(c => c.id));
+    m.routing.movePanel(() => { m.flap.rotation.x = 0; }, () => { m.flap.rotation.x = Math.PI; }, front);
+    const snapshot = capture(m), target = make();
+    target.flap.rotation.x = Math.PI;
+    load(snapshot, target);
+    assert.equal(target.flap.rotation.x, 0);
+    assert.deepEqual(target.routing.snapshot(), snapshot.wiring.physical);
+    target.routing.movePanel(() => { target.flap.rotation.x = Math.PI; }, () => { target.flap.rotation.x = 0; }, front);
+    target.routing.movePanel(() => { target.flap.rotation.x = 0; }, () => { target.flap.rotation.x = Math.PI; }, front);
+    assert.equal(target.routing.wires[0].id, 'W01');
+    assert.deepEqual(target.routing.wires[0].to, ep('HL4', '2'));
+});

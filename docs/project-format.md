@@ -80,8 +80,8 @@ npm run build
 npm run rebuild-project -- old-or-new.json new-project.json
 ```
 
-重建命令實際跑同一套模型與路由，輸出純專案資料，從不覆寫原檔或既有輸出。新增的主要測試位於 `qa/project-*-check.mjs`；完整 Node 測試包含原有幾何基準。`qa/project-browser-check.py` 另外驗證瀏覽器實際操作與獨立 HTML。
+重建命令實際跑同一套模型與路由，輸出純專案資料，從不覆寫原檔或既有輸出。新增的主要測試位於 `qa/project-*-check.ts`；完整 Node 測試包含原有幾何基準。`qa/project-browser-check.ts` 另外驗證瀏覽器實際操作與獨立 HTML。
 
-程式分工：`src/project/` 的 contracts／fields／validation／catalog／assemblies／legacy／default-project 負責純資料；model／structures／resources／equipment／runtime／session 負責重建與所有權；view-binding 只控制渲染圖層；app 負責目前專案 UI。舊 `layout.ts` 是預設配置的相容讀取介面，不再是新專案的來源。`scene.js` 的舊建模入口、舊 snapshot 工具及 `/mc1.html` 保留供歷史回歸／除錯，不供一般動態專案匯出。
+程式分工：`src/project/` 的 contracts／fields／validation／catalog／assemblies／legacy／default-project 負責純資料；model／structures／resources／equipment／runtime／session 負責重建與所有權；view-binding 只控制渲染圖層；app 負責目前專案 UI。舊 `layout.ts` 是預設配置的相容讀取介面，不再是新專案的來源。`scene.ts` 的舊建模入口、舊 snapshot 工具及 `/mc1.html` 保留供歷史回歸／除錯，不供一般動態專案匯出。
 
 `window.wiringLab.getProject()` 回傳目前專案副本；`loadProject(jsonText)` 與檔案選擇器使用相同交易；`getSnapshot()` 是明確標示的 `wiring-panel-debug`，不支援一般還原。沒有回傳 live mesh 或模型參照。

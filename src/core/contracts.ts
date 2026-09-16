@@ -44,6 +44,7 @@ export interface TerminalDefinition {
   readonly electricalRole: 'unverified' | 'coil' | 'power' | 'contact';
 }
 export interface TerminalView {
+  readonly side?: 'L' | 'R'; readonly end?: 'F' | 'B'; readonly level?: 'U' | 'L';
   id: string;
   object: Group;
   hit: Mesh;
@@ -58,6 +59,7 @@ export interface ModelParts {
   dial?: Object3D; test?: Object3D; reset?: Object3D; lever?: Object3D;
   cover1?: Object3D; cover2?: Object3D; factoryLinks?: Group;
   color?: MeshPhysicalMaterial;
+  lens?: Mesh;
 }
 export interface ModelContext {
   root: Group;

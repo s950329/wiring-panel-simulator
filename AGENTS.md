@@ -7,5 +7,5 @@
 - Keep the website and downloadable HTML tied to the same application source and revision. Regenerate exports when application changes affect them. Preserve `.openai/hosting.json` and the existing Sites project identity when deploying this Site.
 - Keep credentials, `node_modules/`, `dist/`, and preview runtime files out of Git. Do not store access tokens in remote URLs or configuration.
 - The accepted geometry and terminal coordinates are protected by `qa/fixtures/model-baseline.json`. Do not replace that fixture merely to hide a regression. Report any intentionally changed geometry and its validation.
-- Keep the TypeScript core strict. Do not conceal migration errors with `any`, `@ts-ignore`, or disabled checks. The existing JS model and routing modules are intentionally documented incremental migration boundaries.
+- Keep all authored application, tooling, and QA modules in strict TypeScript. Do not conceal errors with `any`, `@ts-ignore`, `@ts-nocheck`, or disabled checks. `npm run typecheck` covers `src/`, `scripts/`, `qa/`, and `vite.config.ts`; the migration guard prevents reintroducing unchecked JS or Python. Generated browser JavaScript and external dependencies are build artifacts, not migration exceptions.
 

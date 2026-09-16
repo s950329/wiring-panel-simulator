@@ -14,10 +14,10 @@
 
 | 實例／型號 | 穩定端子與本 profile 的關係 | 依據與限制 |
 |---|---|---|
-| MC1／S-P16 | `1L1–2T1`、`3L2–4T2`、`5L3–6T3` 隨明確 coil snapshot 閉合；`A1–A2` 為線圈負載 | [原廠 S-P16 圖面](https://global.seec.com.tw/Templates/att/S-P16_P21_P25_E.pdf?lng=en)支持三主極與 A1/A2；現有照片中 A1/A2 辨識紀錄在 `src/models/mc1.js`。實物版本、額定值未確認，程式仍為教學模型。 |
+| MC1／S-P16 | `1L1–2T1`、`3L2–4T2`、`5L3–6T3` 隨明確 coil snapshot 閉合；`A1–A2` 為線圈負載 | [原廠 S-P16 圖面](https://global.seec.com.tw/Templates/att/S-P16_P21_P25_E.pdf?lng=en)支持三主極與 A1/A2；現有照片中 A1/A2 辨識紀錄在 `src/models/mc1.ts`。實物版本、額定值未確認，程式仍為教學模型。 |
 | MC1 左右 APS-11 | 每側 `*-B-L–*-F-L` 為 NO，`*-B-U–*-F-U` 為 NC；隨自身 MC1 coil snapshot 切換，四組各自隔離 | 原始近照標示 APS-11；[士林原廠規格](https://global.seec.com.tw/en/product/4604.html)為每側 1NO+1NC。[原廠圖 WS100C047（通路鏡像）](https://www.cleswitch.com.tw/uploads/files/1680832342.pdf)的外側兩端 NO／內側兩端 NC，再對照照片的低／高階位置。此資產包含兩個附件，不代表裸 S-P16 本體規格；不強行把反向印刷的 53/54、83/84 指派為左右。 |
 | AP1／AP-22 | `53–54`、`83–84` NO；`61–62`、`71–72` NC；由明確 `parentId=MC1` 的 coil snapshot 驅動 | [原廠 AP-4P 型錄頁](https://global.seec.com.tw/en/product/4603.html)確認 AP-22 為 2NO+2NC。各編號與排列沿用既有標示，仍屬教學假設；尚未取得對應實物的端子圖或導通量測。 |
-| TH1／資產標示 TH20 | 三路 `1/L1–2/T1`、`3/L2–4/T2`、`5/L3–6/T3` 固定導通；教學設定 `TC–TB` 常閉，`TC–TA` 常開，`tripped` 使兩者交換 | TC/TA/TB 是使用者照片辨識紀錄（`src/views/models.js`），電性對應未確認。現行 [TH-P20 原廠頁](https://global.seec.com.tw/en/product/4402.html)及[型錄](https://global.seec.com.tw/Templates/att/MS-P.pdf?lng=en)描述 1NO+1NC／95–96、97–98，不足以證實舊資產的三端共點關係。此處**僅為教學 SPDT 假設，不是實物 TH20 規格**；不更改已確認的三個端子 ID。 |
+| TH1／資產標示 TH20 | 三路 `1/L1–2/T1`、`3/L2–4/T2`、`5/L3–6/T3` 固定導通；教學設定 `TC–TB` 常閉，`TC–TA` 常開，`tripped` 使兩者交換 | TC/TA/TB 是使用者照片辨識紀錄（`src/views/models.ts`），電性對應未確認。現行 [TH-P20 原廠頁](https://global.seec.com.tw/en/product/4402.html)及[型錄](https://global.seec.com.tw/Templates/att/MS-P.pdf?lng=en)描述 1NO+1NC／95–96、97–98，不足以證實舊資產的三端共點關係。此處**僅為教學 SPDT 假設，不是實物 TH20 規格**；不更改已確認的三個端子 ID。 |
 | PB1–PB5 | `2–3` NO；`1–4` NC；顯示穩定 ID 與接點功能 | 依使用者 2026-09-15 確認的課堂接法校正：預設安裝、操作板展開並歸正視野時，綠色 ON 接左側 2/3，紅色 OFF 接右側 1/4。所有按鈕變體沿用相同 1NO+1NC 配置；未用組與其他顏色仍屬教學配置，非原廠型號逐顆量測。`pressed=false` 時 NO 斷、NC 通；true 相反。數字是模型 ID，不冒稱實物端子印字。 |
 | ES1 | `1–2` NC（顯示 21–22）；`latched=true` 斷開 | 教學假設，急停復歸只使這個接點閉合。 |
 | SA1 | 位置 0：`1–2` 通；位置 1：全斷；位置 2：`3–4` 通 | 教學真值表，位置 1 為預設停止。既有 UI 的演示狀態不會自動輸入核心。 |

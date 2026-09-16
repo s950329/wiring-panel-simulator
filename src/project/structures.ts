@@ -1,7 +1,7 @@
 import * as T from 'three';
 import type {Board,OperationPanel,Channel} from './contracts.ts';
-import {mat,box,cyl,ring,screw,label,tube,rail,duct} from '../primitives.js';
-import {batchStatic} from '../optimize.js';
+import {mat,box,cyl,ring,screw,label,tube,rail,duct} from '../primitives.ts';
+import {batchStatic} from '../optimize.ts';
 
 /** Same stock baseplate geometry, parameterized by authored dimensions. No electrical equipment is implied. */
 export function buildBaseplate(world:T.Group,b:Board,name?:string):void{

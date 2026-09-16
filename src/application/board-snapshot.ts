@@ -3,7 +3,7 @@ import type {ComponentRuntime, Vec3} from '../core/contracts.ts';
 import type {Endpoint, Wire} from '../electrical/contracts.ts';
 import type {SimulationController} from './simulation.ts';
 import {board, ducts, rails, panelGateway, placements, frontPlacements} from '../layout.ts';
-import {MODEL_REVISION} from '../revision.js';
+import {MODEL_REVISION} from '../revision.ts';
 
 export interface RoutedWire extends Wire {readonly points: readonly Vec3[]; readonly viaDucts: readonly (number | string)[]; readonly radius: number}
 export interface Transform {readonly position: readonly number[]; readonly quaternion: readonly number[]; readonly scale: readonly number[]}

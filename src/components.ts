@@ -3,8 +3,8 @@ import type {ComponentAction, ComponentBehavior, ComponentPlacement, ComponentRu
 import {ComponentInstance} from './core/component.ts';
 import {EmergencyBehavior, FuseBehavior, MomentaryBehavior, OverloadBehavior, PassiveBehavior, SelectorBehavior, ToggleBehavior} from './core/behaviors.ts';
 import {ThreeComponentView} from './views/component-view.ts';
-import {modelBuilders} from './views/models.js';
-import {terminal} from './primitives.js';
+import {modelBuilders} from './views/models.ts';
+import {terminal} from './primitives.ts';
 import {getDefinition, resolvePlacement} from './catalog/resolve.ts';
 
 export const componentRegistry: Readonly<Record<ViewType, ModelBuilder>> = Object.freeze(modelBuilders);

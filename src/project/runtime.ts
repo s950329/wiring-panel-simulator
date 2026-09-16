@@ -8,7 +8,7 @@ import {captureProjectInputs} from './catalog.ts';
 import {projectEquipment} from './equipment.ts';
 import {disposeProjectTree} from './resources.ts';
 import {ProjectSimulationController} from './simulation.ts';
-import {WiringController} from '../wiring/controller.js';
+import {WiringController} from '../wiring/controller.ts';
 
 /** Owns one configuration and its actual connections; reconstruction appends through connect(). */
 export class ProjectRuntime {

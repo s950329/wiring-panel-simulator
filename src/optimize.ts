@@ -1,0 +1,27 @@
+import * as T from 'three';
+import { captureMergedBoxes } from './wiring/solids.ts';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+/** Batch static surfaces per material while retaining independent hit targets and terminals. */
+export function batchStatic(root: T.Object3D, parts: Record<string, T.Object3D | T.Material | undefined> = {}) { root.updateMatrixWorld(true); const inv = root.matrixWorld.clone().invert(), moving = new Set(Object.values(parts).filter((p): p is T.Object3D => p instanceof T.Object3D)), groups = new Map<string, {material: T.Material; meshes: T.Mesh[]}>(); root.traverse(o => { if (!(o instanceof T.Mesh) || Array.isArray(o.material) || o.material.opacity === 0 || o.userData.action)
+    return; for (let p: T.Object3D | null = o; p && p !== root; p = p.parent)
+    if (moving.has(p))
+        return; const m = o.material; let b = groups.get(m.uuid); if (!b) {
+    b = { material: m, meshes: [] };
+    groups.set(m.uuid, b);
+} b.meshes.push(o); }); for (const b of groups.values()) {
+    if (b.meshes.length < 2)
+        continue;
+    const geos = b.meshes.map(o => { const g = o.geometry.clone(); g.applyMatrix4(new T.Matrix4().multiplyMatrices(inv, o.matrixWorld)); return g.index ? g.toNonIndexed() : g; });
+    const geo = mergeGeometries(geos, false);
+    if (!geo)
+        continue;
+    const mesh = new T.Mesh(geo, b.material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData = { ...root.userData, routingBoxes: captureMergedBoxes(b.meshes, inv) };
+    root.add(mesh);
+    for (const o of b.meshes)
+        o.removeFromParent();
+    for (const g of geos)
+        g.dispose();
+} }

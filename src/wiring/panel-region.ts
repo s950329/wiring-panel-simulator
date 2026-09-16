@@ -2,7 +2,7 @@ import {Matrix4,Vector3} from 'three';
 import type {Group} from 'three';
 import type {ComponentRuntime,Vec3} from '../core/contracts.ts';
 import type {RoutingContext} from './context.ts';
-import {WIRE_RADIUS,SOLID_CLEARANCE,segmentBox} from './collision.js';
+import {WIRE_RADIUS,SOLID_CLEARANCE,segmentBox} from './collision.ts';
 
 export interface PanelRoutingShape {width:number;depth:number;thickness:number;skirtHeight:number}
 export interface RoutingBox {min:[number,number,number];max:[number,number,number]}
