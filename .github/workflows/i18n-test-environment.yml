@@ -1,0 +1,26 @@
+name: Prepare i18n test environment
+on:
+  push:
+    branches: [feature/i18n-en]
+    paths: [.github/workflows/i18n-test-environment.yml]
+permissions:
+  contents: read
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - run: npm ci
+      - run: tar -czf locked-node-dependencies.tgz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: i18n-locked-test-dependencies
+          path: locked-node-dependencies.tgz
+          retention-days: 1
