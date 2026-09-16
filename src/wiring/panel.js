@@ -10,6 +10,7 @@ export function createWirePanel(app,{toast,isFlapOpen,onChange,simulation=()=>nu
  let history=runtime?[...runtime.connectionOrder()].map(w=>w.id):[];
  let evidence=new Set();
  let lastAttempt=null;
+ let promptSource='';
  const panel=document.createElement('section');panel.className='wiring-panel';
  panel.innerHTML=`<div class="section-head"><h2>盤面配線</h2><span class="chip">選中：桃紅</span></div><div class="toolgroup wire-modes"><button data-wire-mode="connect" class="active" aria-pressed="true">接線模式</button><button data-wire-mode="operate" aria-pressed="false">元件操作</button></div><p class="wire-prompt" role="status" aria-live="polite"></p><div class="wire-actions"><button data-wire-cancel class="secondary" disabled>取消起點</button><button data-wire-undo class="secondary" disabled>復原上一條</button><button data-wire-all class="secondary" disabled>顯示全部</button></div><div class="wire-list" aria-label="已連接電線"></div><p class="wire-note">選中線以桃紅／白色慢速閃爍，其他線淡化。盤內沿線槽，操作板側直接走線。外接設備以 E 編號列出端點連接，不畫成盤內電線。接線前請展開操作板。</p>`;
  document.querySelector('.select-wrap').before(panel);
@@ -18,7 +19,7 @@ export function createWirePanel(app,{toast,isFlapOpen,onChange,simulation=()=>nu
  const allWires=()=>[...routing.wires,...external()];
  function render(message){
   if(disposed)return;
-  $('.wire-prompt').textContent=message||(!editable()?'模擬中已鎖定接線；停止模擬後可修改。':busy?'正在檢查端子出口與走線…':pending?`起點 ${label(pending)} → 請點選終點`:(mode==='connect'?'點選起點端子，再點選終點端子或外接設備。':'可操作按鈕與開關；切回接線模式即可加線。'));
+  $('.wire-prompt').textContent=promptSource=message||(!editable()?'模擬中已鎖定接線；停止模擬後可修改。':busy?'正在檢查端子出口與走線…':pending?`起點 ${label(pending)} → 請點選終點`:(mode==='connect'?'點選起點端子，再點選終點端子或外接設備。':'可操作按鈕與開關；切回接線模式即可加線。'));
   $('[data-wire-cancel]').disabled=!pending||busy||!editable();
   $('[data-wire-undo]').disabled=!history.length||busy||!editable();
   $('[data-wire-all]').disabled=!routing.selected&&!externalSelected&&!evidence.size;
@@ -60,7 +61,7 @@ export function createWirePanel(app,{toast,isFlapOpen,onChange,simulation=()=>nu
    evidence.clear();history.push(w.id);externalSelected=w.id.startsWith('E')?w.id:null;if(externalSelected)routing.select(null);
    pending=null;toast(`${w.id} 已接線`);render(`${w.id} 已接線 · ${label(w.from)} → ${label(w.to)}`);
   }catch(e){if(disposed)return;lastAttempt={...lastAttempt,status:'failed',error:e.message};render(e.message+'；起點已保留。');toast(e.message);}
-  finally{busy=false;if(!disposed){onChange?.();render($('.wire-prompt').textContent);}}
+  finally{busy=false;if(!disposed){const message=promptSource;onChange?.();render(message);}}
  }
  function setMode(next){
   if(disposed||busy||runtime?.locked||next==='connect'&&!editable())return false;mode=next;pending=null;

@@ -15,3 +15,29 @@ main{grid-template-columns:minmax(0,1fr) 360px}.simulation-panel{border:1px soli
 .wire-row.active{border-color:#b11974;background:#ffe6f3;box-shadow:inset 4px 0 #ed279c;animation:selected-wire-pulse 1.2s ease-in-out infinite}.wire-row.active>button:first-child{color:#850d54;font-weight:600}.wire-row.evidence{border-color:#1893a2;background:#dff8fb}.wire-row.active::before{content:'';width:6px;flex-shrink:0;background:#ed279c;border-radius:5px 0 0 5px}@keyframes selected-wire-pulse{0%,100%{background-color:#ffe0f1;box-shadow:inset 4px 0 #ed279c}50%{background-color:#fff5fb;box-shadow:inset 4px 0 #a41468}}@media(prefers-reduced-motion:reduce){.wire-row.active{animation:none}}
 
 .project-files{margin-bottom:18px}.project-files>button{width:100%;margin-bottom:8px;min-height:42px}.project-files>button[hidden]{display:none}.project-files p{font-size:13px;line-height:1.65;overflow-wrap:anywhere;color:#526458}.project-files details{font-size:13px;color:#617068}.project-files details>button{font-size:12px;margin-top:8px}.project-identity{margin:12px 0 20px}.project-identity label{display:block;font-size:13px;color:#536c5f;margin-bottom:6px}.project-identity input{box-sizing:border-box;width:100%;font:inherit;border:1px solid #b9cbbb;border-radius:5px;padding:9px;background:#fff;color:#294c3c}.inspection-link[hidden]{display:none}.supply-switches{flex-direction:column;gap:8px}.toolbar #inspect-component{font-size:12px}.model,.terminal-text{overflow-wrap:anywhere}
+
+/* Locale-aware layout: allow long labels without replacing or shrinking controls. */
+#app{height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr)}
+#app>header{height:auto;min-height:68px;flex-wrap:wrap;gap:12px;padding-top:12px;padding-bottom:12px}
+#app>main{height:auto;min-height:0}
+.header-actions{flex-wrap:wrap;justify-content:flex-end}
+.language-control{display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap}
+.language-control select{max-width:220px;min-width:150px;padding:9px 30px 9px 10px;border:1px solid #557466;border-radius:5px;background:#29463e;color:#edf5ef;font-size:14px;cursor:pointer;color-scheme:dark}
+.language-control select:focus-visible{outline:3px solid #e9a745;outline-offset:3px}
+.section-head,.status{gap:8px;flex-wrap:wrap}
+.status b{text-align:end}
+.wire-modes button{min-width:0;white-space:normal;line-height:1.4}
+.hint{max-width:calc(100% - 32px);white-space:normal;text-align:center}
+@media(max-width:720px){
+ #app>header{min-height:62px;padding:10px 14px;gap:9px}
+ .header-actions{gap:8px}
+ .language-control select{font-size:13px;max-width:200px}
+ .hint{bottom:68px}
+ .toolbar>.toolgroup{flex-wrap:wrap;max-width:100%}
+ .simulation-actions{flex-wrap:wrap}
+}
+@media(max-width:540px){
+ .header-actions{width:100%;justify-content:flex-start}
+ .language-control{flex-basis:100%;justify-content:space-between}
+ .language-control select{flex:1;max-width:260px}
+}
