@@ -1,177 +1,152 @@
-# 配線實作台 · Three.js
+# Wiring Panel Simulator
 
-預設盤已依實習設備預接單一 MAIN 電源至 QF1 的三個輸入端；QF1 初始 OFF，學生從出線端開始配線。固定進線保存在 `configuration.fixedConnections`，不可從練習接線清單刪除。舊版原配置 BOARD 024 匯入時會補齊固定進線、將相同的手動進線歸入配置，並顯示轉換說明；其他控制端點保持原樣。自訂盤或明示空的 `fixedConnections: []` 不會自動補線。
+[English](README.md) | [繁體中文](README.zh-TW.md)
 
-依 IMG_2674、IMG_2681–2690 的空線配線盤照片重建。IMG_2679 是已配線狀態；IMG_2675 的三用電表屬盤外器具。
+A browser-based **3D industrial wiring simulator** for practicing wiring, understanding control circuits, and testing circuit behavior without a physical training panel.
 
-**交付狀態：使用者已核對目前元件正確（2026-09-13）。頁面已移除照片對照。**
-盤面、元件位置與尺寸由透視校正照片推估，未取得實測尺寸。TH 操作桿的標示、選擇旋鈕實際段位、部分線圈／輔助端子與銘牌仍待實物確認。不能將此模型用作實物安全接線依據。
+> **Work in progress.** This project is intended for education and training only.
 
-## 目前版本：WIRE-R19 走線搜尋穩定性
+**[Live Demo](https://leo-wiring-panel.leochien0808.chatgpt.site)**
 
-修正 GitHub CI 在 23 線刪除重接後重新匯入的搜尋超限。局部走線改用固定步數預算，完整線組搜尋在初次耗盡局部預算後，優先嘗試不同的全組排序；保留每姿態 20 秒總保護、碰撞檢查及失敗還原。詳見 [CI 搜尋預算驗收](docs/ci-routing-budget-acceptance.md)。
+## Why this project?
 
-### 延續 R18 的操作板背面走線
+Industrial wiring is usually learned with physical training equipment. Once class is over, however, most learners do not have a wiring panel at home.
 
-操作板的自動走線現在依板片的局部座標、實際寬深與端子位置定義背面空間。同板接線留在板背範圍；跨至端子台的接線另使用通往指定過門側的走線區域，整段不得穿越操作正面。先比較較短、轉折較少的直角路徑，受阻才進入有計算上限的網格搜尋。新算路徑、姿態快取與舊路徑還原共用區域驗證。
+This project began with a simple question:
 
-保留 R17 的完整線組協調與雙姿勢交易：新增接線先驗證展開與收合姿態，全部成功才接受；開闔仍重新核對端子、實體、線距與自交，失敗保留原盤面。修正並未改變元件幾何、端子 ID 或電性。驗證涵蓋使用者 11 線、課堂 22 線、R8 23 線的逐步接線／順序變體，以及舊錯誤快取和旋轉盤面。詳見 [背面走線驗收](docs/panel-backside-routing-acceptance.md)。
+> **Can I continue practicing industrial wiring in a browser when I do not have access to the physical panel?**
 
-目前處理展開／收合兩個靜態工作姿態，未模擬柔性線材長度、鉸鏈彎曲或翻轉過程。路徑成本比較與搜尋皆有候選範圍及計算限制，不保證全域最短路徑。
+Wiring Panel Simulator recreates the essential learning experience in 3D. It focuses on identifying components, connecting terminals, inspecting wire routes, operating controls, and observing basic circuit behavior—not merely drawing a schematic.
 
-MC1 左右各一組 APS-11 已加入電性：同側低層兩端 NO、高層兩端 NC，隨線圈切換。按鈕改為同側 NO 2/3、NC 1/4，並以穩定 ID 標示接點功能；原有座標、端子 ID 與匯入接線不自動交換。
+## Features
 
-`examples/board-024-classroom.project.json` 保留使用者原始 22 條控制線，另有 3 條 MAIN→QF1 固定預接線，不列入使用者接線，QF1 初始 OFF。匯入後開始測試、切 QF1 ON，再按綠色 PB3；左右 APS-11 分別提供自保及綠燈控制，AP1 未接線。紅色 PB5 停止，TH1 TEST／RESET 示範過載。此檔只完成控制回路，未接主馬達回路。
+- **Interactive 3D panel** — rotate through 360°, zoom, and inspect the equipment from different angles.
+- **Terminal-to-terminal wiring** — select two terminals to create a connection.
+- **Automatic wire routing** — route wires through available cable ducts and 3D space while checking component collisions and wire spacing.
+- **Movable operation panel** — open the panel to access rear terminals and validate wiring in both open and closed positions.
+- **Electrical simulation** — operate circuit breakers, NO/NC push buttons, magnetic contactors, auxiliary contacts, thermal overload protection, indicator lamps, buzzers, and a basic three-phase motor circuit.
+- **Visual feedback** — highlight selected wires, active indicators, conductive paths, and diagnostic evidence.
+- **JSON import/export** — save and restore complete wiring projects without replacing the current project when validation fails.
+- **Automated validation** — test electrical logic, routing, geometry, component behavior, and project compatibility independently from WebGL rendering.
+- **Standalone build** — generate a single HTML file that runs locally in a modern browser.
 
-舊版依對角規則接線的專案仍保持原端點，需要依新版 PB 標示核對。內建 A04 已校正按鈕端點；模型依據與相容性見 [電性資料](docs/electrical-models.md)，操作見 [使用說明](docs/electrical-user-guide.md)。
+## Current training scenarios
 
-## 單一電源與完整 A04 範例
+The simulator currently focuses on basic motor-control training. Two ready-to-import examples are included:
 
-正常配線頁只有一組外接三相電源，日常供斷電使用盤上總開關；已移除獨立 CONTROL 與電源勾選。A04 控制回路經 QF1 後的 R–T 與兩顆 FUSE 真正取電。匯入 `examples/a04-motor-start.project.json`，按「開始測試」，先切換 QF1 ON，再按 PB3 啟動；PB5 停止，TH1 TEST／RESET 作過載示範。
+- [`examples/a04-motor-start.project.json`](examples/a04-motor-start.project.json) — a complete direct-on-line motor starter.
+- [`examples/board-024-classroom.project.json`](examples/board-024-classroom.project.json) — the classroom control-circuit exercise.
 
-A04 預設 QF1 OFF、操作板閉合；28 條盤內線、3 條馬達外接線、3 條固定電源進線與 3 條固定組裝導體。新專案保存配置與端點，不保存電線路徑。舊檔仍接著 CONTROL 時會明確拒絕，不擅自改線。返回配線是停止運算，不表示物理進線已拔掉。
+The A04 example demonstrates the following sequence:
 
-詳見 [專案格式與操作](docs/project-format.md) 及 [單一電源驗收記錄](docs/a04-single-source-acceptance.md)。下列早期修訂記錄保留作歷史；涉及獨立控制電源的舊說明不再適用正常配線頁。建置／GitHub 提交與既有 Site 發布是分開的狀態，發布結果以當次交付記錄為準。
+```text
+QF1 ON
+   ↓
+Press START
+   ↓
+MC1 energizes
+   ↓
+The auxiliary contact creates a holding circuit
+   ↓
+The motor runs
 
-## 開啟
+Press STOP or trip the thermal overload
+   ↓
+MC1 releases and the motor stops
+```
 
-- `/mc1.html`：MC1 單獨檢視；可切換本體、含 AP1／TH1，再回到整盤。與盤面共用同一個元件工廠與局部端子資料。頁首顯示「配線修訂 03 · MC1 R3」，避免混用舊檔。
-- `public/wiring-panel.html`：單檔 HTML，包含 Three.js、程式、樣式與元件銘牌貼圖，下載後用現代瀏覽器直接開啟；需要 WebGL 2 與硬體加速。
-- 開發：`npm ci` → `npm run dev`。
-- 型別檢查：`npm run typecheck`；正式編譯、測試及 HTML 匯出都會先執行。
-- 正式編譯：`npm run build`，先從當前原始碼產生單檔 HTML，再編譯至 `dist/`。
-- 更新單檔：`npm run offline`。
-- 結構檢查：`npm test`。
+## Quick start
 
-## 操作
+### Requirements
 
-| 操作 | 行為 |
-|---|---|
-| 空白區左右拖曳 | 水平 360° 連續環繞 |
-| 空白區上下拖曳 | 仰角 0–90°，限定上方半球 |
-| 滾輪／雙指縮放 | 拉近、拉遠 |
-| 畫布方向鍵／Home | 環繞／全景 |
-| 點選元件 | 顯示該元件、端子與操作 |
-| 按住瞬時按鈕或 MC 可動件 | 壓下，放開回彈 |
-| 急停 | 點擊鎖定，右拖旋轉復歸，或使用操作區按鍵 |
-| 選擇旋鈕 | 左右拖曳或選擇檔位；手動／停止／自動為模擬定義 |
-| TH TEST／RESET | 模擬熱過載跳脫／復歸；電流旋鈕可調整 |
-| 斷路器 | 三個手柄與橫桿同步切換 |
-| 保險絲透明蓋 | 點擊掀開／閉合 |
-| 展開操作板 | 顯示下方獨立接點盒與端子 |
-| 指示燈／蜂鳴器 | 操作區提供獨立測試，不將它們誤當按鈕 |
+- A recent version of Node.js
+- npm
+- A modern browser with WebGL 2 and hardware acceleration
 
-已提供端子接線網路與幾何走線；尚未提供線圈通電求解或馬達運轉模擬。按壓 MC 表示機械手動壓合，不能把它解讀成電路已通電。
+### Run locally
 
-## 模組邊界
+```bash
+git clone https://github.com/s950329/wiring-panel-simulator.git
+cd wiring-panel-simulator
+npm ci
+npm run dev
+```
 
-| 檔案 | 責任 |
-|---|---|
-| `src/layout.ts` | 盤面、線槽、DIN 軌、元件實例與位置 |
-| `src/components.ts` | 元件工廠：組合規格、行為、實例與外觀 |
-| `src/models/mc1.js` | MC1 獨立工廠：本體、側翼、16 個端子與黑色底座 |
-| `src/primitives.js` | 可重用端子、螺絲、外殼、標籤、導軌、線槽 |
-| `src/optimize.js` | 合併靜態表面；保留可動件與端子物件邊界 |
-| `src/camera.js` | 固定上方半球的相機數學，頂點無奇異翻轉 |
-| `src/scene.js` | 場景、材質、光源、選取及呼叫元件 view 更新 |
-| `src/main.js` | 使用者介面、指標／鍵盤互動 |
-| `qa/geometry-check.mjs` | 結構、端子與相機限制測試 |
+Vite will print the local development URL in the terminal.
 
-座標單位為比例單位，**不是毫米**。盤面寬 X=800、深 Z=640，Y 為高度；左後角為 (0,0)，朝操作台是 +Z。顯示時整盤平移至相機中心，不旋轉盤面。位置 `x,z` 與 `rotation` 屬於實例，不寫進元件模型。各端子以局部 `(x,y,z)` 定義，保留 `componentId:terminalId` 穩定識別碼。端子的可見幾何與點擊區均在端子自己的 Group 內。
+## Basic usage
 
-AP1 是獨立的 AP-22 元件，以 `parentId: 'MC1'` 附掛在 S-P16；移動 MC1 時 AP1 一起移動，機械連動使用獨立 bridge 可動件。TH1 也是獨立熱過載組件，透過 parentId 附掛於 MC1；移動接觸器時整組一起移動。新增型號先在 `src/catalog/definitions.ts` 建立規格，再於 layout 放入 `definitionId` 與實例位置；沿用既有外觀／行為的型號不需改主程式。需要新外觀時，另登錄模型建立器。未來的拖拉編輯器應更新實例 transform，再同步座標資料與操作區；本版不提供自由拖拉編排介面。
+1. Drag on empty space to rotate the panel.
+2. Select the first terminal.
+3. Select the destination terminal.
+4. Let the simulator calculate the wire route.
+5. Complete the circuit.
+6. Close the operation panel.
+7. Enter test mode, switch QF1 on, and operate the circuit.
 
-`window.wiringLab` 提供唯讀 `getConfiguration()`、`getState()`、`getCamera()`、`getTerminals(id)`、`getWires()`。回傳不包含 Mesh 引用，方便後續整合與自動驗收。
+You do not need to draw wires manually in the 3D scene.
 
-## MC1／TH1 修正（2026-09-13）
+## Development and testing
 
-- MC1 黑色側翼補齊左／右 × 前／後 × 上／下，共八個階梯端子；下層向前後外移，保留可見螺絲和壓線片。側端子以 L/R、F/B、U/L 作內部位置 ID，介面顯示中文位置，不杜撰實物號碼。MC1 現有六個主端子加八個側端子，共14接線點；AP1 的八端子仍獨立。
-- TH1 移除先前錯畫的95／96／97／98，改為使用者標示的三角配置：TC上方單顆，TA左下、TB右下。三者皆有黑色座、壓片、螺絲與獨立點擊區；中間小黃銅螺絲只作機構固定。
-- 重新建立 TH1 三通道外殼、右側窄接點柱與階梯底座，安裝X由263調到276。完整外殼與端子仍位於線槽元件側，距灰色線槽最內凸緣至少5.5比例單位（不是量測毫米）。
-- `qa/mc1-correction.mjs` 驗證兩側各四顆、上下高低與前後偏移、TA/TB/TC相對位置、整個TH1與線槽的邊界，以及八個側端子和三個控制端子的上半球射線可達性。
+```bash
+npm test                 # Full validation suite
+npm run test:electrical  # Electrical simulation tests
+npm run typecheck        # TypeScript checks
+npm run build            # Production build
+npm run offline          # Standalone HTML
+```
 
-## MC1 獨立重建（修訂 03）
+The application separates the **electrical model**, **routing logic**, and **3D presentation**, so core behavior can be tested without relying on WebGL.
 
-- 對照 IMG_2690 後側、IMG_2681 前側、IMG_2685 俯視與 IMG_2686 側面。上一張使用者截圖仍有舊版金色主端子及橫向白色銘牌，與已保存修正不一致；僅由截圖不能確定是入口、舊分頁或舊 HTML。
-- MC1 本體按可見結構改為三主端子隔艙、下方機構層、A1/A2 獨立端子艙，重做黑色底座與安裝耳。後側照片旋轉 180 度可辨識 A1/A2，端子總數修正為 6 主 + 8 側 + 2 線圈端子 = 16；AP1 和 TH1 分開計數。
-- 側翼使用連續階梯輪廓和凹入端子座，端子局部位置列在 MC1_GEOMETRY。側端子仍用位置識別，沒有用同一面銘牌推測另一面的編號。
-- AP1 補窄頸支腳和薄基板階梯缺口；三條 MC1–TH1 金屬連接片由兩端端子錨點產生。縮短 TH1 上平台後緣並調整旋鈕支承與測試件，避開右前下端子。
-- 側面銘牌使用 IMG_2686 真實照片校正貼圖；來源點位在 public/textures/sp16-source.json。來源有效區域約 125×60 像素，輸出放大不代表恢復小字細節。
-- 獨立檢視與盤面走同一個 mountComponents / 元件工廠，沒有另一套展示模型。獨立頁面預設只顯示 MC1，附掛件隱藏時也不攔截端子點擊；可按「含 AP1／TH1」核對裝配。
-- 入口與離線 HTML 的 Cache-Control 設為重新驗證；正式 JS 仍使用內容雜湊檔名。新入口 mc1.html 及頁首 MC1-R3 讓使用者辨認所載入的版本。離線 HTML 可用頁首連結切換單獨檢視。
+For implementation details, see:
 
-## 離線 HTML 匯出修正
+- [`ARCHITECTURE.md`](ARCHITECTURE.md)
+- [`docs/electrical-user-guide.md`](docs/electrical-user-guide.md)
+- [`docs/electrical-models.md`](docs/electrical-models.md)
+- [`docs/project-format.md`](docs/project-format.md)
 
-離線檔改以函式回傳方式注入 JavaScript，避免壓縮程式中的 `$&` 被字串替換規則展開成舊的 script 標籤，導致語法損壞。匯出時必須驗證兩個 inline script、無外部 script、內嵌 JavaScript 與新 bundle 逐位元組一致，並通過 JavaScript 語法解析。
+## Roadmap
 
-目前下載檔為 `downloads/wiring-panel-WIRE-R3.html`，與網站共用配線修訂 03 及 MC1 R3。MC1 本體保留 16 個端子。
+- [x] Interactive 3D training panel
+- [x] Terminal-based wiring and automatic routing
+- [x] Movable operation panel
+- [x] JSON import/export
+- [x] Basic control-circuit and motor-start simulation
+- [x] Automated electrical, routing, geometry, and project tests
+- [ ] More industrial components and training circuits
+- [ ] Clearer circuit diagnostics and error explanations
+- [ ] More configurable training panels
+- [ ] A more complete beginner learning mode
 
-## 已完成驗證與限制
+## Contributing
 
-- 22 個獨立元件，含長端子排46組／92接線點、短端子排13組／26接線點、11腳空插座、AP-22八個端子。
-- 各元件端子 ID 唯一，端子可見幾何保留在自己的 Group。
-- MC1 平移時 AP1、TH1 與端子一同移動；獨立檢視與整盤端子座標一致。
-- 水平連續三圈；仰角0°、中間角、精確90°；超界輸入限制；相機右向量Y=0，盤面不發生roll。
-- 對原先被遮蔽的 TH1 下排3端子、SO1側排3端子進行多角度射線復測，均可直接選取。
-- 以離屏軟體渲染檢查俯視、透視、側視與斜視幾何；此檢查器與網頁材質管線不同。
-- 測試環境的瀏覽器停用 WebGL，**未完成瀏覽器中的3D渲染及端到端互動驗證**。未宣告95%外觀仿真達標。
+Bug reports, suggestions, and pull requests are welcome. Contributions are especially useful in these areas:
 
-S-C21L、AP-22 與「儀表用電源」銘牌使用原照透視校正的局部貼圖，其餘幾何為獨立 3D 模型；裁切來源記錄在 `public/textures/sources.json`。
+- Adding or validating industrial components
+- Correcting terminal definitions or electrical behavior
+- Improving automatic wire routing
+- Adding training exercises
+- Improving documentation, accessibility, and learning experience
 
-依賴 Three.js（MIT）。保留其授權，見 `THIRD_PARTY_NOTICES.txt`。參考照片由使用者提供。
+Both software engineering and electrical or industrial-automation experience are valuable. Please open an issue before starting a large change so the design can be discussed first.
 
-## 移除照片對照（2026-09-13）
+## Safety
 
-整盤與 MC1 單獨檢視共用介面，均已移除照片對照按鈕、側欄照片與照片彈窗及其事件、樣式。離線 HTML 不再內嵌參考照片，保留已核對模型使用的銘牌貼圖。原始參考素材仍保留供開發使用；本次不修改元件幾何、端子、機構行為。
+This simulator is for **education, training, and simulation only**.
 
-## 配線修訂 01（2026-09-13）
+Some component dimensions, terminal arrangements, and electrical behavior are based on training materials, photographs, and observed equipment. They may not exactly match a particular manufacturer or model.
 
-整盤預設「接線模式」。依序點兩個端子（畫面螺絲或右側端子按鈕）建立黃色線。點選電線／清單可追查該線，其他線淡化；可取消起點、復原上一條、刪除指定線或顯示全部。Escape 取消起點，Delete 刪除選取線。切換「機構操作」可使用原有畫布按壓／旋轉操作；右側操作按鍵一直可用。
+The simulator does not replace:
 
-前方控制元件在接線時自動展開操作板到180°，讓背部端子朝上。已有前方端子接線時，操作板維持展開；移除這些線後可收合。FU1 有接線時固定保護蓋姿勢，避免開合蓋體穿過線。其他可動件的行程保留碰撞空間。
+- Manufacturer documentation
+- Verified engineering drawings
+- Applicable electrical codes and regulations
+- Qualified electrical instruction
 
-| 模組 | 責任 |
-|---|---|
-| `src/wiring/solids.js` | 合併前保存實體、非凸輪廓分片、可動件行程與碰撞座標轉換 |
-| `src/wiring/collision.js` | 線段對膨脹實體盒、線段間最短距離 |
-| `src/wiring/router.js` | 端子壓片邊緣出口、局部避障、正前方線槽選擇與分層路由 |
-| `src/wiring/controller.js` | 獨立連線資料、直線與圓角接頭渲染、選取／刪除 |
-| `src/wiring/panel.js` | 兩次點選流程、操作模式、配線清單 |
-| `qa/wiring-check.mjs` | 全端子接線、密集走線、碰撞、分支、失敗不變更、動作行程 |
+**Do not use simulation results as the sole basis for wiring real energized equipment.**
 
-路由使用盤面局部 XYZ，端子由實際階層矩陣換算。優先沿端子正前方線槽走線；不同直線槽以橫向線槽連接。先使用槽內橫向／高度通道，容納不足時使用上方通道。線半徑1、線間外表面間距至少1.5、元件淨空0.25，均為模型比例單位，不是實測毫米。3D 高度錯開的線在正上方投影仍可能交叉；可環繞或選線追查。
+## License
 
-保留端子、盤面及線的獨立資料。`getWires()` 回傳 `id/from/to/points/viaDucts/radius`，沒有 Mesh 引用；端點使用 `{component,terminal}`。刪線釋放通道，不改動其他線的既有路徑。路由失败不加入直穿元件的替代線。本版配線保存在目前頁面的記憶體，重新整理不保留；不連動電路通電狀態。
+This project is **source-available**, not OSI open source. It is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 
-為建立實際出口，對原幾何做了局部修正：SO1 往前18比例單位，避開 MC1 側翼；SO1 前後端子座由實心盒改成階梯凹槽；BZ1 背端子下降4比例單位；FU1 透明保護蓋改為薄頂板及側壁。MC1 本體未重畫。
-
-驗證：216 個端子各自接至端子台全部成功；31 條同時配線逐段比對全部實體、線與線間距；另測同端子分支、刪線重接、相同端子／重複連線／被封死出口拒絕、操作板遮擋及機構動作。沿用上半球相機與 MC1 結構測試。使用軟體離屏渲染查看路徑，未在瀏覽器中完成 WebGL 端到端操作測試。
-
-## TypeScript 與元件重構（WIRE-R2）
-
-核心契約、型號目錄、配置解析、實例 Class、行為、外觀更新、操作控制項與端子座標解析已轉為 TypeScript，開啟 strict，未使用 any 或 ts-ignore 跳過檢查。既有幾何建模、場景、主頁互動接線及路由演算法保留 JavaScript，透過型別明確的核心邊界逐步移轉。詳細責任與新增元件方式見 [ARCHITECTURE.md](ARCHITECTURE.md)。
-
-- `npm test`：先做型別檢查，再執行既有幾何／MC1／配線測試及新增元件行為、取消事件、序列化測試。Node 透過 tsx import hook 執行混合 TS/JS 測試。
-- `qa/fixtures/model-baseline.json` 是重構前幾何與端子座標基準，不可為了讓測試通過而任意重新產生。
-- 配線回歸包含所有 216 端子的單條路由、31 條同時路由、間距、障礙與操作後淨空；操作後檢查改由公開 action API 驅動 view。
-- `getConfiguration()` 新增 schemaVersion、placements、frontPlacements；保留 layout／frontControls 相容資料。`getState()` 現在回傳各行為的 discriminated state；保險絲蓋使用 `{kind:'cover',open}`，不再借用 on 代表開蓋。
-- `getTerminals(id)` 保留原欄位，新增 exitDirection 與 electricalRole。電性仍全部為 unverified；目前不計算通電。
-- 本版下載為 `downloads/wiring-panel-WIRE-R2.html`。
-
-
-## 操作修正與 GitHub 同步（WIRE-R3）
-
-- 正面依使用者確認：PB／指示燈位於畫面右側縱向排列。初始視角、右下歸零、Home 共用方位 −90°；斷路器 ON 向前推（局部 z = −10），OFF 往後扳（z = 8）。元件本體與端子局部座標不變。
-- 只有右上「展開／收合操作板」改變操作板姿勢。選取 PB、元件或端子不再自動開板；閉合時選擇背面端子會提示先展開。PB 在兩種模式皆可按住、放開，亦保留失焦與取消時釋放。
-- 收合後切到「機構操作」，展開後切到「接線模式」並清除尚未完成的起點。已建立的接線、ID、追查選取保留。固定且仍具淨空的線維持原路；操作板電線或被新姿勢遮擋的線以目前端點重新路由。全部成功才替換線材；任何路由失敗都還原操作板姿勢與原有線材。
-- 原操作板高度 13 會使 PB／BZ 背面接點穿過底板。修正鉸鏈高度為 52，補支撐；保持各元件 x/z、局部幾何及端子位置。最低 BZ 實體與底板留有約 5.77 比例單位空間。閉合時電線先沿板下後緣出線，再上升進入線槽，避免穿過板面。
-- 保留原 `qa/fixtures/model-baseline.json`。基準比較僅將上述刻意修改的板高、鉸鏈與斷路器初始姿勢還原，略過新增支撐；另以 `qa/operation-panel-check.mjs` 直接驗證實際新姿勢、全部端子位移、底板淨空及往返路由。
-- 新回歸包含全部 24 個操作板端子同時接線後反覆開闔、端點錨定、實體／線間淨空、同板兩端連線、刪除重接、原固定路徑不動，以及失败時 ID／選取／模型還原。Node 測試不使用 WebGL，未宣稱瀏覽器端到端驗收。
-- `npm run build` 自動重新產生獨立 HTML，避免網站更新而下載檔過期。後續版本流程見 `VERSION_CONTROL.md`。歷史 HTML／ZIP 由舊版本追溯，不再重複提交產生物；原始整張參考照片不納入 GitHub 分支。
-
-
-### GitHub 版控
-
-完整原始碼、設定、測試、文件與四張銘牌 PNG 貼圖共 54 個檔案，納入私人 repository：https://github.com/s950329/wiring-panel-simulator 。使用者已於 2026-09-13 明確授權這批內容。原始整張參考照片、歷史 HTML／ZIP、`node_modules/` 與 `dist/` 不納入本次原始碼導入。執行 `npm ci`、`npm test`、`npm run build` 可安裝依賴、驗證並重新產生網站及下載 HTML。
-
-GitHub 導入提交以原有 `AGENTS.md` 提交為父節點，保留 GitHub 既有歷史；導入前的開發紀錄仍保存在既有網站的 Git repository。後續每次更新必須 commit、push 並驗證遠端版本，流程見 `VERSION_CONTROL.md`。
+Noncommercial use, study, modification, and distribution are permitted under the license. Commercial use requires a separate license from the project owner.
