@@ -6,7 +6,7 @@ A browser-based **3D industrial wiring simulator** for practicing wiring, unders
 
 > **Work in progress.** This project is intended for education and training only.
 
-**[Live Demo](https://leo-wiring-panel.leochien0808.chatgpt.site)**
+**[Live Demo](https://wiring-panel-simulator.pages.dev)**
 
 ## Why this project?
 
