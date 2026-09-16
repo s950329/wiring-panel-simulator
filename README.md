@@ -29,6 +29,7 @@ Wiring Panel Simulator recreates the essential learning experience in 3D. It foc
 - **JSON import/export** — save and restore complete wiring projects without replacing the current project when validation fails.
 - **Automated validation** — test electrical logic, routing, geometry, component behavior, and project compatibility independently from WebGL rendering.
 - **Standalone build** — generate a single HTML file that runs locally in a modern browser.
+- **Interface languages** — Traditional Chinese and English, selected from browser preferences with a saved manual choice; supported in both the web and standalone versions.
 
 ## Current training scenarios
 
@@ -119,6 +120,8 @@ For implementation details, see:
 - [ ] A more complete beginner learning mode
 
 ## Contributing
+
+**Translations:** To add a language, create a catalog in `src/i18n/locales/` and register it in `src/i18n/registry.ts`; the language selector and browser detection use that registry. See the [localization guide](docs/localization.md#add-a-language) for examples, placeholder and fallback rules, and validation.
 
 Bug reports, suggestions, and pull requests are welcome. Contributions are especially useful in these areas:
 
