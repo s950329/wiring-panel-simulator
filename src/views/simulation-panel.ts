@@ -61,7 +61,7 @@ export function createSimulationPanel(container: HTMLElement, simulation: Simula
     if (s.result?.status === 'stable') {
       for (const load of [...s.result.evaluation.loads, ...s.result.evaluation.motors]) {
         const row = document.createElement('div'); row.className = 'simulation-result'; row.dataset.load = load.component; row.dataset.powerState = load.state;
-        const id = document.createElement('span'); id.textContent = load.component;
+        const id = document.createElement('span'); id.setAttribute('data-i18n-ignore', ''); id.textContent = load.component;
         const status = document.createElement('b');
         status.textContent = load.state === 'powered' ? '三相供電成立' : load.state === 'energized' ? ('kind' in load && load.kind === 'coil' ? '線圈吸合' : '已供電') :
           load.reason === 'missing-phase' ? '缺相 · 未供電' : load.reason === 'duplicate-phase' ? '相別重複 · 未供電' : '未供電';
