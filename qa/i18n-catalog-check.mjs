@@ -33,3 +33,10 @@ test('raw user names and load identifiers have translation boundaries; wiring do
  assert.match(panel,/id\.setAttribute\('data-i18n-ignore'/);
  assert.ok(!wiring.includes("render($('.wire-prompt').textContent)"),'translated display text must not become canonical state');
 });
+test('compound MC1 side-terminal labels translate as complete messages',async()=>{
+ const {LocaleController}=await import('../src/i18n/core.ts');const c=new LocaleController({languages:['en']});
+ for(const side of ['左','右'])for(const end of ['後','前'])for(const kind of ['上 · 常閉 NC','下 · 常開 NO']){
+  const label=side+end+kind;assert.doesNotMatch(c.translate(label),/[\u3400-\u9fff]/u,label);
+  c.setPreference('zh-TW');assert.equal(c.translate(label),label);c.setPreference('en');
+ }
+});

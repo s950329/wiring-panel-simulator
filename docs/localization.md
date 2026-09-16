@@ -27,7 +27,7 @@ User-authored project names and raw identifiers use `data-i18n-ignore` (or the e
 
 - `src/i18n/core.ts`: preference negotiation, guarded storage, notifications and canonical text bindings. No DOM or simulator dependency.
 - `src/i18n/registry.ts`: supported language IDs, native names, document metadata, aliases and fallback.
-- `src/i18n/locales/en.ts`: English translations, keyed by the existing canonical Chinese source message, plus a few semantic UI keys.
+- `src/i18n/locales/en.ts`: complete English catalog, combining common messages from `en-common.ts` with compound model labels. Keys are canonical Chinese source messages plus a few semantic UI keys.
 - `src/i18n/locales/zh-TW.ts`: source-language messages and semantic-key translations.
 - `src/i18n/messages.ts`: source-message formatting, exact/template matching, bounded caching and fallback.
 - `src/i18n/browser.ts`: the native select, document metadata and a scoped DOM adapter for the existing framework-free views.
