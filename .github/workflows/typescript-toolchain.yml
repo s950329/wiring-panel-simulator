@@ -1,0 +1,29 @@
+name: Prepare TypeScript migration toolchain
+on:
+  push:
+    branches: [chore/typescript-toolchain]
+permissions:
+  contents: read
+jobs:
+  toolchain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Install the existing lockfile and migration-only development types
+        run: |
+          npm ci --cache .npm-cache
+          npm install --cache .npm-cache --save-dev --save-exact @types/node@22.16.0 playwright@1.55.0 esbuild@0.24.2
+      - name: Package toolchain without credentials or repository history
+        run: |
+          tar -czf typescript-toolchain.tar.gz node_modules .npm-cache/_cacache package.json package-lock.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: typescript-toolchain
+          path: typescript-toolchain.tar.gz
+          retention-days: 1
