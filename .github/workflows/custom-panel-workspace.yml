@@ -1,0 +1,27 @@
+name: Custom panel development workspace
+on:
+  push:
+    branches: [feature/custom-panel-2d5]
+    paths: [.github/workflows/custom-panel-workspace.yml]
+permissions:
+  contents: read
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+      - run: npm ci
+      - name: Package locked development dependencies
+        run: tar -czf custom-panel-dependencies.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: custom-panel-dependencies
+          path: custom-panel-dependencies.tar.gz
+          retention-days: 1
