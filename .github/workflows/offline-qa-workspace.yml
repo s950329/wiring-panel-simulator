@@ -1,0 +1,25 @@
+name: Prepare offline custom-panel QA
+on:
+  push:
+    branches: [chore/custom-panel-qa-20260917]
+permissions:
+  contents: read
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - run: npm ci --cache .qa-npm-cache
+      - name: Package public lockfile dependencies only
+        run: tar -czf qa-npm-cache.tgz -C .qa-npm-cache _cacache
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offline-qa-dependencies
+          path: qa-npm-cache.tgz
+          retention-days: 1
