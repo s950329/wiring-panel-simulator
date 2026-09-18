@@ -11,6 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: a978f157464559d7efc0a83cb1cfa67b58d85cad
           persist-credentials: false
       - run: git archive --format=zip --output=editor-source.zip HEAD
       - uses: actions/upload-artifact@v4
