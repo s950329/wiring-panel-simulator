@@ -1,21 +1,89 @@
-name: Recover interrupted editor source
+name: Verify and synchronize custom panel
 on:
   push:
     branches: [chore/recover-editor-20260918]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  archive:
+  synchronize:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
+    env:
+      BASE_SHA: 3d6d1a22b42145a47219d4dba9f59ee4783d816e
+      RECOVERY_SHA: a978f157464559d7efc0a83cb1cfa67b58d85cad
+      EXPECTED_TREE: 02e6cfaabf79d5a05ad71fecc5468edc27990f5c
+      FEATURE_BRANCH: feature/custom-panel-builder-r21
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: a978f157464559d7efc0a83cb1cfa67b58d85cad
           persist-credentials: false
-      - run: git archive --format=zip --output=editor-source.zip HEAD
-      - uses: actions/upload-artifact@v4
+      - uses: actions/setup-node@v4
         with:
-          name: recovered-editor-source
-          path: editor-source.zip
-          retention-days: 1
+          node-version: '22.16.0'
+      - name: Reconstruct exact verified source tree
+        run: |
+          set -euo pipefail
+          cat .sync/editor-part-0 .sync/editor-part-1 .sync/editor-part-20 .sync/editor-part-21 > "$RUNNER_TEMP/editor-completion.gz"
+          gzip -dc "$RUNNER_TEMP/editor-completion.gz" > "$RUNNER_TEMP/editor-completion.patch"
+          printf '%s  %s\n' d868f64845261f9bdb44b1330acc1d250d412ab4dab5bead0552e5ca98c60500 "$RUNNER_TEMP/editor-completion.patch" | sha256sum -c -
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git fetch --no-tags --depth=1 origin "$RECOVERY_SHA"
+          git checkout --detach "$BASE_SHA"
+          git read-tree --reset -u "$RECOVERY_SHA"
+          git apply --index --whitespace=error "$RUNNER_TEMP/editor-completion.patch"
+          test "$(git write-tree)" = "$EXPECTED_TREE"
+          git diff --cached --check
+          test ! -e .sync
+          test ! -e .github/workflows/recover-editor-source.yml
+      - run: npm ci
+      - name: Run complete regression suite and strict typecheck
+        run: set -o pipefail; npm test | tee "$RUNNER_TEMP/unit-tests.log"
+      - name: Build production and standalone HTML
+        run: set -o pipefail; npm run build | tee "$RUNNER_TEMP/build.log"
+      - name: Publish only the tested feature tree
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git write-tree)" = "$EXPECTED_TREE"
+          git diff --exit-code
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$BASE_SHA"
+          existing=$(git ls-remote origin "refs/heads/$FEATURE_BRANCH" | cut -f1)
+          if [ -n "$existing" ]; then
+            git fetch --no-tags --depth=1 origin "$existing"
+            test "$(git rev-parse "$existing^{tree}")" = "$EXPECTED_TREE"
+            final="$existing"
+          else
+            git config user.name OpenAI
+            git config user.email noreply@openai.com
+            git commit -m 'feat: add 2.5D custom panel builder (WIRE-R21)' -m 'Preserve the approved layout and existing wiring through transactional edits. Complete source synchronization with an exact tree hash, strict typecheck, full regression suite and production/standalone builds. Browser/WebGL acceptance remains owner-managed. No transfer files or credentials are included.'
+            final=$(git rev-parse HEAD)
+            auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+            echo "::add-mask::$auth"
+            git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" push origin "HEAD:refs/heads/$FEATURE_BRANCH"
+          fi
+          test "$(git ls-remote origin "refs/heads/$FEATURE_BRANCH" | cut -f1)" = "$final"
+          printf '%s\n' "$final" > verified-commit.txt
+          printf '%s\n' "$EXPECTED_TREE" > verified-tree.txt
+          git ls-tree -r "$final" > verified-files.txt
+          git archive --format=zip --output=wiring-panel-source.zip "$final"
+          cp "$RUNNER_TEMP/unit-tests.log" ./unit-tests.log
+          cp "$RUNNER_TEMP/build.log" ./build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: custom-panel-r21-verification
+          path: |
+            verified-commit.txt
+            verified-tree.txt
+            verified-files.txt
+            wiring-panel-source.zip
+            unit-tests.log
+            build.log
+            dist/
+            downloads/
+            qa-results/
+          retention-days: 7
