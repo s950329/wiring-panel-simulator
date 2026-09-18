@@ -1,2 +1,2 @@
-export const MODEL_REVISION = 'WIRE-R20';
-export const MODEL_REVISION_LABEL = '配線修訂 20 · 中英文介面';
+export const MODEL_REVISION = 'WIRE-R21';
+export const MODEL_REVISION_LABEL = 'WIRE-R21 · 自訂盤面建造';

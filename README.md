@@ -8,6 +8,10 @@ A browser-based **3D industrial wiring simulator** for practicing wiring, unders
 
 **[Live Demo](https://wiring-panel-simulator.pages.dev)**
 
+## Custom panel builder
+
+Choose **Customize panel** to arrange components in a 2.5D grid view. Browse the searchable component library, inspect models in 360°, and drag or click to place, move, rotate, duplicate and delete components. Changes preserve existing wire endpoints through transactional rebuilds; undo/redo and JSON import/export are supported. See the [builder guide](docs/custom-panel.md) for controls and limits.
+
 ## Why this project?
 
 Industrial wiring is usually learned with physical training equipment. Once class is over, however, most learners do not have a wiring panel at home.
