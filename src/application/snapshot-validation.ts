@@ -6,7 +6,7 @@ import {assemblyWires, electricalComponents} from './equipment.ts';
 
 export const MAX_SNAPSHOT_BYTES = 10 * 1024 * 1024;
 // Historical diagnostic/component-view adapter only; normal projects use project/legacy.ts.
-const compatibleRevisions = new Set(['WIRE-R8', 'WIRE-R9', 'WIRE-R10', 'WIRE-R11', 'WIRE-R12', 'WIRE-R13', 'WIRE-R14', 'WIRE-R15', 'WIRE-R16', 'WIRE-R17', 'WIRE-R18', 'WIRE-R19','WIRE-R20']);
+const compatibleRevisions = new Set(['WIRE-R8', 'WIRE-R9', 'WIRE-R10', 'WIRE-R11', 'WIRE-R12', 'WIRE-R13', 'WIRE-R14', 'WIRE-R15', 'WIRE-R16', 'WIRE-R17', 'WIRE-R18', 'WIRE-R19','WIRE-R20','WIRE-R21','WIRE-R22']);
 function requireValue(ok: unknown, message: string): asserts ok {if (!ok) throw new Error(message);}
 const record = (v: unknown, name: string): Record<string, unknown> => {
   requireValue(v !== null && typeof v === 'object' && !Array.isArray(v), `${name} 格式錯誤`); return v as Record<string, unknown>;
@@ -55,7 +55,7 @@ export function parseBoardSnapshot(source: string, components: ReadonlyMap<strin
   let value: unknown; try {value = JSON.parse(source.replace(/^\uFEFF/, ''));} catch {throw new Error('無法讀取 JSON，請選擇匯出的盤面檔案');}
   const data = record(value, '快照');
   requireValue(data.format === 'wiring-panel-snapshot' && data.schemaVersion === 1, '不支援此快照格式或版本');
-  requireValue(typeof data.revision === 'string' && compatibleRevisions.has(data.revision), '模型版本不相容，支援 WIRE-R8～WIRE-R20 匯出的檔案');
+  requireValue(typeof data.revision === 'string' && compatibleRevisions.has(data.revision), '模型版本不相容，支援 WIRE-R8～WIRE-R22 匯出的檔案');
   requireValue(equalData(data.configuration, {board, ducts, rails, panelGateway, placements, frontPlacements}), '盤面配置不相容');
   requireValue(equalData(data.units, {coordinates: 'scene-units', angles: 'radians'}), '座標單位不相容');
   const v = record(data.view, '視角'); requireValue(v.page === page, '檔案頁面不符：請在整盤或 MC1 單獨檢視的對應頁面匯入');

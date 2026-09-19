@@ -56,7 +56,9 @@ export function createScene(container: HTMLElement, { inspectMC1 = false, model 
     grid.material.opacity = .32;
     grid.visible = false;
     scene.add(grid);
-    const camera = new T.PerspectiveCamera(40, 1, 1, 5000);
+    const perspectiveCamera = new T.PerspectiveCamera(40, 1, 1, 5000);
+    const constructionCamera = new T.OrthographicCamera(-1, 1, 1, -1, 1, 5000);
+    let camera: T.PerspectiveCamera | T.OrthographicCamera = perspectiveCamera;
     const orbit = new HemisphereCamera(camera);
     if (inspectMC1) {
         orbit.preset = name => { orbit.azimuth = name === 'rear' ? Math.PI / 2 : name === 'front' ? -Math.PI / 2 : 1.02; orbit.target.set(-12, 48, 0); orbit.radius = orbit.fitRadius || 350; orbit.elevation = name === 'top' ? Math.PI / 2 : name === 'side' ? 0 : .66; orbit.update(); };
@@ -74,10 +76,10 @@ export function createScene(container: HTMLElement, { inspectMC1 = false, model 
     terminalGlow.renderOrder = 999;
     scene.add(terminalGlow);
     function resize() { let r = container.getBoundingClientRect(); if (!r.width || !r.height)
-        return; renderer.setSize(r.width, r.height); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); orbit.fitRadius = inspectMC1 ? Math.max(350, 155 / (Math.tan(20 * Math.PI / 180) * camera.aspect)) : Math.max(1060, 480 / (Math.tan(20 * Math.PI / 180) * camera.aspect)) * (boardSize ? Math.max(boardSize.width / 800, boardSize.depth / 640, .2) : 1); if (!orbit.hasResized || r.width < 700) {
+        return; renderer.setSize(r.width, r.height); orbit.aspect = r.width / r.height; perspectiveCamera.aspect = orbit.aspect; camera.updateProjectionMatrix(); orbit.fitRadius = inspectMC1 ? Math.max(350, 155 / (Math.tan(20 * Math.PI / 180) * orbit.aspect)) : Math.max(1060, 480 / (Math.tan(20 * Math.PI / 180) * orbit.aspect)) * (boardSize ? Math.max(boardSize.width / 800, boardSize.depth / 640, .2) : 1); if (!orbit.hasResized || r.width < 700) {
         orbit.radius = orbit.fitRadius;
         orbit.update();
-    } orbit.hasResized = true; }
+    } orbit.update(); orbit.hasResized = true; }
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(container);
     resize();
@@ -200,10 +202,16 @@ export function createScene(container: HTMLElement, { inspectMC1 = false, model 
         focus(id);
     else
         orbit.preset('perspective'); }
+    function setConstructionMode(enabled: boolean) {
+        camera = enabled ? constructionCamera : perspectiveCamera;
+        orbit.camera = camera;
+        fitProject();
+        orbit.preset(enabled ? 'construction' : 'perspective');
+    }
     function dispose() { if (disposed)
         return; disposed = true; cancelAnimationFrame(frame); resizeObserver.disconnect(); highlight.geometry.dispose(); highlightMaterial.dispose(); terminalGlow.geometry.dispose(); terminalGlow.material.dispose(); grid.geometry.dispose(); grid.material.dispose(); ground.geometry.dispose(); ground.material.dispose(); scene.environment?.dispose(); renderer.dispose(); renderer.domElement.remove(); }
     fitProject();
-    return { renderer, camera, orbit, get components() { return components; }, get world() { return world; }, pick, select, glowTerminal, focus, setFlap, grid, scene, setAttachments, setProject, inspect, dispose };
+    return { renderer, get camera() { return camera; }, orbit, setConstructionMode, get components() { return components; }, get world() { return world; }, pick, select, glowTerminal, focus, setFlap, grid, scene, setAttachments, setProject, inspect, dispose };
 }
 function mountComponents(world: T.Group, definitions: readonly ResolvedComponent[]) {
     const components = new Map<string, ComponentRuntime>();

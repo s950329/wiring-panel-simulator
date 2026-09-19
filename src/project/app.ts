@@ -11,6 +11,8 @@ import { createSimulationPanel } from '../views/simulation-panel.ts';
 import { renderControls } from '../views/inspector.ts';
 import { MomentaryOperations, interactionAction } from '../core/interactions.ts';
 import { MODEL_REVISION, MODEL_REVISION_LABEL } from '../revision.ts';
+import { createLayoutEditor } from '../editor/ui.ts';
+import '../editor/style.css';
 const escape = (s: unknown) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 export function startProjectApp() {
     const $ = <E extends HTMLElement = HTMLElement>(s: string) => document.querySelector<E>(s)!, root = $('#app');
@@ -29,7 +31,7 @@ export function startProjectApp() {
     }
     const active = () => session.active;
     let wireUI: ReturnType<typeof createWirePanel>, simulationUI: ReturnType<typeof createSimulationPanel>;
-    let unsubscribe: (() => void) | undefined, filesUI: ReturnType<typeof createProjectFiles>;
+    let unsubscribe: (() => void) | undefined, filesUI: ReturnType<typeof createProjectFiles>, layoutUI: ReturnType<typeof createLayoutEditor> | undefined;
     let currentId: string | null = null, terminalId: string | null = null, inspected: string | null = null;
     let toastTimer: ReturnType<typeof setTimeout> | undefined, audioCtx: AudioContext | null = null, oscillator: OscillatorNode | null = null;
     let pointer: PointerGesture | null = null, pinch: PinchGesture | null = null, disposed = false;
@@ -127,7 +129,7 @@ export function startProjectApp() {
         return; select(id); terminalId = terminal; app.glowTerminal(id, terminal); renderDetails(); if (connect)
         wireUI.pick(id, terminal); }
     function perform(c: ComponentRuntime, action: ComponentAction | string, refresh = true) {
-        if (isBusy() || active().components.get(c.id) !== c)
+        if (isBusy() || layoutUI?.active || active().components.get(c.id) !== c)
             return;
         const command = typeof action === 'string' ? interactionAction(action) : action;
         if (!command)
@@ -196,7 +198,7 @@ export function startProjectApp() {
         wireUI = createWirePanel(app, { runtime: active(), toast, isFlapOpen: () => active().panelOpen, simulation: () => active().simulation, onChange: () => { lockControls(); updateStatus(); } });
         wireUI.setMode(active().panelOpen ? 'connect' : 'operate');
         simulationUI = createSimulationPanel($('.sidebar'), active().simulation, {
-            isBusy, start: () => { if (isBusy())
+            isBusy: () => isBusy() || !!layoutUI?.active, start: () => { if (isBusy() || layoutUI?.active)
                 return; releaseAll(); try {
                 active().simulation.start();
                 wireUI.setMode('operate');
@@ -221,8 +223,11 @@ export function startProjectApp() {
         app.select(currentId);
         renderDetails();
         updateCamera();
+        layoutUI?.refresh();
     }
-    async function loadProject(source: string | (() => Promise<string>), onProgress?: (progress: ProjectProgress) => void) {
+    async function loadProject(source: string | (() => Promise<string>), onProgress?: (progress: ProjectProgress) => void, fromEditor = false) {
+        if (layoutUI?.busy && !fromEditor)
+            throw new Error('盤面配置正在重建中');
         if (wireUI?.isBusy())
             throw new Error('正在完成接線，請稍後再匯入');
         if (active().simulation.mode !== 'off')
@@ -233,7 +238,7 @@ export function startProjectApp() {
         try {
             const result = await promise;
             installRuntime();
-            toast('專案已重建，模擬未執行');
+            if (!fromEditor) toast('專案已重建，模擬未執行');
             return { connections: result.runtime.connectionOrder().length, convertedLegacy: result.convertedLegacy, conversionNotes: result.conversionNotes };
         }
         finally {
@@ -244,6 +249,18 @@ export function startProjectApp() {
     installRuntime();
     filesUI = createProjectFiles($('.sidebar'), { load: loadProject, cancel: () => session.cancel(), export: () => active().exportProject(),
         debug: () => ({ format: 'wiring-panel-debug', schemaVersion: 1, revision: MODEL_REVISION, project: active().exportProject(), routes: active().routing.snapshot(), routingPlan: structuredClone(active().routing.lastPlan), simulation: active().simulation.snapshot(), session: wireUI.snapshotSession(), camera: { azimuth: app.orbit.azimuth, elevation: app.orbit.elevation, radius: app.orbit.radius } }), changed: lockControls, isBusy: () => !!wireUI?.isBusy() });
+    layoutUI = createLayoutEditor({root, app, read: () => active().exportProject(), canEdit: () => !isBusy() && active().simulation.mode === 'off',
+        load: async project => { await loadProject(JSON.stringify(project), undefined, true); }, cancelLoad: () => session.cancel(),
+        setPanelOpen: open => { if (active().panelOpen !== open) { wireUI.movePanel(open, active().panelOpen); } },
+        prepare: () => { cancelPointer(); inspected = null; wireUI.cancel(); wireUI.setMode('operate'); },
+        importFile: () => filesUI.importButton.click(), saveFile: () => filesUI.exportButton.click(), toast,
+        modeChanged: (enabled, id) => {
+            $('#flap-btn').textContent = active().panelOpen ? '收合操作板' : '展開操作板';
+            $('#flap-btn').setAttribute('aria-pressed', String(active().panelOpen));
+            $('#inspect-component').textContent = '單獨檢視選中元件';
+            if (!enabled) { if (id) select(id); else { app.select(currentId); renderDetails(); } }
+            lockControls();
+        }});
     $<HTMLInputElement>('#project-name').onchange = () => { if (session.busy)
         return; const name = $<HTMLInputElement>('#project-name').value.trim(); if (name)
         active().project.name = name;
@@ -266,7 +283,7 @@ export function startProjectApp() {
     $('#grid-btn').onclick = () => { app.grid.visible = !app.grid.visible; $('#grid-btn').setAttribute('aria-pressed', String(app.grid.visible)); };
     const preset = (name: string) => { app.orbit.preset(name); document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === name)); updateCamera(); };
     document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b => b.onclick = () => preset(b.dataset.view!));
-    $('#reset-view').onclick = () => preset('perspective');
+    $('#reset-view').onclick = () => preset(layoutUI?.active ? 'construction' : 'perspective');
     $('#zoom-in').onclick = () => { app.orbit.zoom(-150); updateCamera(); };
     $('#zoom-out').onclick = () => { app.orbit.zoom(150); updateCamera(); };
     const canvas = app.renderer.domElement;
@@ -380,12 +397,12 @@ export function startProjectApp() {
         app.orbit.orbit(e.key === 'ArrowLeft' ? -30 : e.key === 'ArrowRight' ? 30 : 0, e.key === 'ArrowUp' ? 30 : e.key === 'ArrowDown' ? -30 : 0);
         updateCamera();
     } if (e.key === 'Home')
-        preset('perspective'); });
+        preset(layoutUI?.active ? 'construction' : 'perspective'); });
     function dispose() { if (disposed)
-        return; disposed = true; unsubscribe?.(); wireUI?.dispose(); simulationUI?.dispose(); filesUI?.dispose(); globalDisposers.forEach(f => f()); silence(); clearTimeout(toastTimer); session.dispose(); app.dispose(); delete window.wiringLab; }
+        return; disposed = true; unsubscribe?.(); layoutUI?.dispose(); wireUI?.dispose(); simulationUI?.dispose(); filesUI?.dispose(); globalDisposers.forEach(f => f()); silence(); clearTimeout(toastTimer); session.dispose(); app.dispose(); delete window.wiringLab; }
     bind(window, 'pagehide', dispose);
     // Stable public integration surface, independent of mesh order; import is the exact same transaction as the file picker.
-    const lab = { getRevision: () => MODEL_REVISION, getProject: () => active().exportProject(), loadProject: (source: string | (() => Promise<string>)) => loadProject(source), cancelImport: () => session.cancel(),
+    const lab = { setLayoutMode: (enabled: boolean) => layoutUI?.setActive(enabled), getLayoutMode: () => !!layoutUI?.active, getRevision: () => MODEL_REVISION, getProject: () => active().exportProject(), loadProject: (source: string | (() => Promise<string>)) => loadProject(source), cancelImport: () => session.cancel(),
         getWires: () => active().routing.snapshot(), getSimulation: () => active().simulation.snapshot(), getConfiguration: () => active().exportProject().configuration,
         getState: () => Object.fromEntries([...active().components].map(([id, c]) => [id, { ...c.state }])), getTerminals: (id: string) => structuredClone(active().components.get(id)?.terminalDefinitions ?? []),
         getSnapshot: () => ({ format: 'wiring-panel-debug', project: active().exportProject(), routes: active().routing.snapshot(), routingPlan: structuredClone(active().routing.lastPlan), simulation: active().simulation.snapshot() }),
