@@ -4,7 +4,7 @@
 
 Stop simulation, then choose **Customize panel** in the header. The default 2.5D orthographic view avoids perspective scaling while retaining horizontal orbit and zoom. The component library uses two columns on desktop. Search by model, manufacturer or name, or filter by purpose.
 
-Click a card for a 360° model viewer and the available catalog metadata. Drag a card onto the board, or choose **Place on panel** and click a location. The preview snaps to a 10 scene-unit grid: green means valid placement; red includes an explanation. Dimensions are scene units, not verified physical millimetres. Unverified electrical ratings are deliberately not invented.
+Click a card for a 360° model viewer and the available catalog metadata. Drag a card onto the board, or choose **Place on panel** and click a location. While dragging, only the translucent model and placement feedback appear on the board; the browser's duplicate library-card thumbnail is hidden so it cannot obscure the drop position. The preview snaps to a 10 scene-unit grid: green means valid placement; red includes an explanation. Dimensions are scene units, not verified physical millimetres. Unverified electrical ratings are deliberately not invented.
 
 Select a placed component to move, rotate 90°, duplicate, inspect or delete it. **R** rotates; **Escape** cancels placement; **Ctrl/Cmd Z** undoes; **Ctrl/Cmd Shift Z** redoes; **Ctrl/Cmd D** duplicates. Shortcuts leave text editing and native dialogs intact. On touch devices use the dialog's placement button followed by a tap on the board.
 
@@ -20,7 +20,7 @@ The first version edits component placement using the already configured plate, 
 
 ## 中文操作摘要
 
-先停止模擬，再按右上角「自訂盤面」。左側可搜尋、分類、拖出元件，或點擊卡片查看 360° 模型後選擇「放到盤面」。盤面每格 10 場景單位；綠色可放、紅色會說明越界或碰撞原因。
+先停止模擬，再按右上角「自訂盤面」。左側可搜尋、分類、拖出元件，或點擊卡片查看 360° 模型後選擇「放到盤面」。拖曳時不顯示重複的元件卡片，只保留盤面上的半透明模型與放置提示，避免遮住定位點。盤面每格 10 場景單位；綠色可放、紅色會說明越界或碰撞原因。
 
 點選已放好的元件可移動、每次旋轉 90°、複製、查閱資料或刪除。R 旋轉、Esc 取消、Ctrl／⌘ Z 復原、Ctrl／⌘ Shift Z 重做。操作板元件會切換到相應安裝面；附件依相容插槽安裝。既有接線會在套用配置前重新驗證，失敗或取消不會破壞原盤面。
 
@@ -28,4 +28,6 @@ The first version edits component placement using the already configured plate, 
 
 ## Verification
 
-`npm test` includes `qa/editor-check.ts`: immutable commands, grid and rotation, mount compatibility, attachment copy/delete behavior, fixed-wire protection, actual geometry, failed publication/history, concurrency, keyboard ownership, orthographic projection, and a real wired-project move/undo through `ProjectSession`. The full existing electrical and routing suite remains enabled. `npm run build` validates and creates both the website and WIRE-R21 standalone HTML from the same source. Browser/WebGL visual acceptance remains owner-managed; Node geometry tests do not claim pixel-level verification.
+`npm test` includes `qa/editor-check.ts`: immutable commands, grid and rotation, mount compatibility, attachment copy/delete behavior, fixed-wire protection, actual geometry, failed publication/history, concurrency, keyboard ownership, orthographic projection, and a real wired-project move/undo through `ProjectSession`. The full existing electrical and routing suite remains enabled. `npm run build` validates and creates both the website and WIRE-R22 standalone HTML from the same source. Browser/WebGL visual acceptance remains owner-managed; Node geometry tests do not claim pixel-level verification.
+
+`npm run test:browser:editor-drag` is an optional DOM-only Chromium regression (install Playwright Chromium, or set `CHROMIUM_EXECUTABLE`). It drives real native drags through the actual editor UI and checks the transparent drag bitmap, unchanged payload/copy behavior, placement feedback, drop/cancel, card click and cleanup. The renderer/viewer and publication host are fixtures; this does not claim WebGL pixels or routing acceptance.

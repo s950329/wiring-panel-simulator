@@ -1,5 +1,7 @@
 /** Custom-panel authoring messages. Catalog/model IDs remain stable across locales. */
 export const editorEnglish = {
+ '模型版本不相容，支援 WIRE-R8～WIRE-R22 匯出的檔案':'Incompatible model version. Files exported by WIRE-R8 through WIRE-R22 are supported.',
+ 'WIRE-R22 · 自訂盤面建造':'WIRE-R22 · Custom panel builder',
  '模型版本不相容，支援 WIRE-R8～WIRE-R21 匯出的檔案':'Incompatible model version. Files exported by WIRE-R8 through WIRE-R21 are supported.',
  'WIRE-R21 · 自訂盤面建造':'WIRE-R21 · Custom panel builder',
  '全部元件':'All components','電磁接觸器 MC':'Contactors (MC)','繼電器與插座':'Relays & sockets','電源與保護':'Power & protection','按鈕與開關':'Buttons & switches','指示與警報':'Indicators & alarms','端子台':'Terminal strips',

@@ -23,6 +23,13 @@ export function createLayoutEditor(host:EditorHost) {
     const {root,app}=host,canvas=app.renderer.domElement;
     const stage=new LayoutStage(app),controller=new LayoutController(host);
     const events=new AbortController(),options={signal:events.signal};
+    // The stage already shows the placement ghost. Suppress the browser's duplicate
+    // card bitmap with a synchronous, transparent canvas (no image-load race).
+    // Keep it rendered in the viewport: display:none/offscreen drag images vary by browser.
+    const dragImage=document.createElement('canvas');dragImage.className='layout-drag-image';
+    dragImage.width=dragImage.height=1;dragImage.setAttribute('aria-hidden','true');
+    dragImage.style.cssText='position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;';
+    dragImage.getContext('2d')?.clearRect(0,0,1,1);root.append(dragImage);
     let active=false,disposed=false,selectedId:string|null=null,mountId=host.read().configuration.board.id;
     let intent:PlacementIntent|null=null,candidate:LayoutCommand|null=null,valid=false,gesture:Gesture|null=null;
     let viewer:ComponentViewer|null=null,viewerAttempted=false,libraryReady=false,lastPoint:{x:number;y:number}|null=null;
@@ -76,7 +83,15 @@ export function createLayoutEditor(host:EditorHost) {
             const name=document.createElement('small');name.textContent=entry.name;card.append(imageBox,model,name);catalog.append(card);
             getViewer()?.thumbnail(entry.id,image);
             card.addEventListener('click',()=>{if(!controller.busy)dialog.open(entry.id);},options);
-            card.addEventListener('dragstart',e=>{if(controller.busy||!host.canEdit()){e.preventDefault();return;}begin({kind:'add',definitionId:entry.id,rotationY:0});if(!intent){e.preventDefault();return;}e.dataTransfer?.setData('application/x-wiring-component',entry.id);if(e.dataTransfer)e.dataTransfer.effectAllowed='copy';},options);
+            card.addEventListener('dragstart',e=>{
+                if(controller.busy||!host.canEdit()){e.preventDefault();return;}
+                begin({kind:'add',definitionId:entry.id,rotationY:0});if(!intent){e.preventDefault();return;}
+                if(e.dataTransfer){
+                    e.dataTransfer.setData('application/x-wiring-component',entry.id);
+                    e.dataTransfer.effectAllowed='copy';
+                    e.dataTransfer.setDragImage(dragImage,0,0);
+                }
+            },options);
             card.addEventListener('dragend',()=>{if(!controller.busy)cancel();},options);
         }
         const empty=document.createElement('p');empty.className='layout-empty';empty.hidden=true;empty.textContent='找不到符合條件的元件';catalog.append(empty);
@@ -208,6 +223,6 @@ export function createLayoutEditor(host:EditorHost) {
     },owned);
     window.addEventListener('blur',()=>{if(active&&!controller.busy)cancel();},options);
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&active&&!controller.busy)cancel();},options);
-    function dispose(){if(disposed)return;disposed=true;events.abort();host.cancelLoad();stage.dispose();dialog.dispose();confirm.dispose();viewer?.dispose();for(const node of [button,library,bar,selection,status,cancelLoad])node.remove();root.classList.remove('layout-mode');controller.history.clear();}
+    function dispose(){if(disposed)return;disposed=true;events.abort();host.cancelLoad();stage.dispose();dialog.dispose();confirm.dispose();viewer?.dispose();for(const node of [button,library,bar,selection,status,cancelLoad,dragImage])node.remove();root.classList.remove('layout-mode');controller.history.clear();}
     return {get active(){return active;},get busy(){return controller.busy;},setActive,refresh,dispose};
 }

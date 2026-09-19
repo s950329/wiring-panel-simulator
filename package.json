@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "reroute": "node --import tsx scripts/reroute-snapshot.ts",
     "rebuild-project": "node --import tsx scripts/rebuild-project.ts",
+    "test:browser:editor-drag": "node --import tsx qa/editor-drag-browser-check.ts",
     "test:browser:i18n": "node --import tsx qa/i18n-browser-check.ts",
     "test:browser:project": "node --import tsx qa/project-browser-check.ts"
   },
