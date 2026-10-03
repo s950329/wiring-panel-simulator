@@ -114,6 +114,58 @@ const definitions: Record<string, ComponentDefinition> = {
     ],
     "hint": "按住灰色框內的黑色機構，放開即復位。"
   },
+  "schneider-gv2me08": {
+    "id": "schneider-gv2me08",
+    "viewType": "motorBreaker",
+    "behavior": "breaker",
+    "name": "電動機斷路器",
+    "model": "Schneider GV2ME · 2.5–4A",
+    "photo": "Q7-IMG_4623",
+    "size": [58, 96, 84],
+    "hint": "第七題 Q1。三極同步 ON/OFF；正面旋鈕呈現可調跳脫電流。現階段電性只模擬開關狀態，不模擬過載曲線。"
+  },
+  "schneider-ic60n-2p-c3": {
+    "id": "schneider-ic60n-2p-c3",
+    "viewType": "miniBreaker2P",
+    "behavior": "breaker",
+    "name": "二極斷路器",
+    "model": "Schneider iC60N · C3 · 2P",
+    "photo": "Q7-IMG_4623",
+    "size": [40, 88, 78],
+    "hint": "第七題 Q2。兩極連動 ON/OFF。"
+  },
+  "schneider-tesys-d": {
+    "id": "schneider-tesys-d",
+    "viewType": "contactorTesys",
+    "behavior": "contactor",
+    "name": "電磁接觸器",
+    "model": "Schneider TeSys D · 第七題照片近似",
+    "photo": "Q7-IMG_4624",
+    "size": [54, 120, 96],
+    "hint": "第七題 KM1/KM2 共用型號。三組主接點、A1/A2 線圈及 13-14 NO、21-22 NC 輔助接點隨線圈切換。"
+  },
+  "reversing-mechanical-interlock": {
+    "id": "reversing-mechanical-interlock",
+    "viewType": "mechanicalInterlock",
+    "behavior": "auxiliary",
+    "name": "正逆轉機械連鎖",
+    "model": "KM1/KM2 中間連鎖機構",
+    "photo": "Q7-IMG_4624",
+    "size": [24, 74, 62],
+    "hint": "依第七題照片呈現 KM1/KM2 中間的機械連鎖；本元件沒有可配線端子。"
+  },
+  "terminal-strip-4": {
+    "id": "terminal-strip-4",
+    "viewType": "terminalStrip",
+    "behavior": "terminalStrip",
+    "name": "短端子台",
+    "model": "4 組・雙螺絲",
+    "count": 4,
+    "pitch": 15.2,
+    "photo": "Q7-IMG_4621",
+    "size": [85, 29, 56],
+    "hint": "第七題 TB2/TB3 短端子台。每格 A/B 兩端內部導通。"
+  },
   "terminal-strip-46": {
     "id": "terminal-strip-46",
     "viewType": "terminalStrip",
