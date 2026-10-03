@@ -2,6 +2,7 @@ import type {ModelContext, ModelBuilder, ViewType} from '../core/contracts.ts';
 import type {TerminalOptions} from '../primitives.ts';
 import * as T from 'three';
 import { buildMC1 } from '../models/mc1.ts';
+import {buildMechanicalInterlock, buildMiniBreaker2P, buildMotorBreaker, buildTesysContactor} from '../models/question07.ts';
 import { mat, box, cyl, ring, screw, label, tube, hit, terminal, mountingFoot } from '../primitives.ts';
 const term = (c: ModelContext, id: string, x: number, y: number, z: number, opt?: TerminalOptions) => terminal(c.root, c.terminals, id, x, y, z, opt);
 function poleBank(c: ModelContext, count: number, w: number, z: number, y: number, { labels = [], brass = true, wallHeight = 28 }: {labels?: readonly string[]; brass?: boolean; wallHeight?: number} = {}) { const pitch = w / count; box(c.root, w + 5, 12, 22, 0, y - 8, z, mat.black, 1); for (let i = 0; i <= count; i++)
@@ -239,4 +240,4 @@ function buildFront(c: ModelContext): ModelContext {
     }
     return c;
 }
-export const modelBuilders: Record<ViewType, ModelBuilder> = { breaker: buildBreaker, fuse: buildFuse, contactorSP: buildMC1, auxiliary: buildAP, overload: buildOverload, socket: buildSocket, contactorSC: buildSC, contactorCN: buildCN, terminalStrip: buildStrip, buzzer: buildFront, emergency: buildFront, selector: buildFront, button: buildFront, lamp: buildFront };
+export const modelBuilders: Record<ViewType, ModelBuilder> = { breaker: buildBreaker, motorBreaker: buildMotorBreaker, miniBreaker2P: buildMiniBreaker2P, fuse: buildFuse, contactorSP: buildMC1, contactorTesys: buildTesysContactor, mechanicalInterlock: buildMechanicalInterlock, auxiliary: buildAP, overload: buildOverload, socket: buildSocket, contactorSC: buildSC, contactorCN: buildCN, terminalStrip: buildStrip, buzzer: buildFront, emergency: buildFront, selector: buildFront, button: buildFront, lamp: buildFront };
