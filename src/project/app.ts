@@ -4,6 +4,7 @@ import type {PointerGesture, PinchGesture} from '../core/pointer.ts';
 import { createScene } from '../scene.ts';
 import { createProjectRuntime } from './runtime.ts';
 import { defaultProject } from './default-project.ts';
+import {projectPreset, projectPresets} from './presets.ts';
 import { ProjectSession } from './session.ts';
 import { createProjectFiles } from '../views/project-files.ts';
 import { createWirePanel } from '../wiring/panel.ts';
@@ -14,7 +15,7 @@ import { MODEL_REVISION, MODEL_REVISION_LABEL } from '../revision.ts';
 const escape = (s: unknown) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 export function startProjectApp() {
     const $ = <E extends HTMLElement = HTMLElement>(s: string) => document.querySelector<E>(s)!, root = $('#app');
-    root.innerHTML = `<header><div class="brand"><div class="mark" aria-hidden="true">▥</div><div><strong>配線實作台</strong><small data-model-revision="${MODEL_REVISION}">${MODEL_REVISION_LABEL}</small></div></div><div class="header-actions"><a class="inspection-link" href="/wiring-panel.html" download="wiring-panel-${MODEL_REVISION}.html" ${location.protocol === 'file:' ? 'hidden' : ''}>下載 HTML</a><button id="reset-project" class="secondary">載入預設盤面</button></div></header>
+    root.innerHTML = `<header><div class="brand"><div class="mark" aria-hidden="true">▥</div><div><strong>配線實作台</strong><small data-model-revision="${MODEL_REVISION}">${MODEL_REVISION_LABEL}</small></div></div><div class="header-actions"><label class="board-picker"><span>盤面</span><select id="project-preset" aria-label="切換盤面">${projectPresets.map(p=>`<option value="${escape(p.id)}">${escape(p.label)}</option>`).join('')}</select></label><a class="inspection-link" href="/wiring-panel.html" download="wiring-panel-${MODEL_REVISION}.html" ${location.protocol === 'file:' ? 'hidden' : ''}>下載 HTML</a><button id="reset-project" class="secondary">載入預設盤面</button></div></header>
  <main><section class="workspace" aria-label="配線盤工作區"><div id="viewport"></div><div class="toolbar"><div class="toolgroup" aria-label="視角"><button data-view="perspective" class="active">立體視角</button><button data-view="top">正上方</button><button data-view="side">水平側視</button></div><div class="toolgroup"><button id="inspect-component">單獨檢視選中元件</button><button id="grid-btn" aria-pressed="false">座標格線</button><button id="flap-btn" aria-pressed="false">展開操作板</button></div></div><div class="view-meta"><strong id="project-meta" data-i18n-ignore></strong><span id="camera-meta"></span></div><div class="hint">拖曳環繞 · 滾輪縮放 · 點選元件操作</div><div class="zoom"><button id="zoom-out" aria-label="縮小">−</button><button id="reset-view" aria-label="回到全景">⌂</button><button id="zoom-in" aria-label="放大">＋</button></div><div class="toast" role="status"></div><div class="tip" data-i18n-ignore></div></section>
  <aside class="sidebar"><div class="project-identity"><label for="project-name">專案名稱</label><input id="project-name" maxlength="200" aria-label="專案名稱"></div><div class="eyebrow">COMPONENT INSPECTOR</div><h1>元件與操作</h1><p class="sub">元件依匯入的專案配置建立。</p><div class="select-wrap"><select id="component-select" aria-label="選擇元件"></select></div><div id="details"></div><p class="footnote">座標是場景比例，非實測尺寸。電性採明示教學假設；不計算真實電流、轉速或保護動作時間。</p></aside></main>`;
     const session = new ProjectSession(createProjectRuntime(defaultProject()));
@@ -87,6 +88,7 @@ export function startProjectApp() {
             filesUI.exportButton.disabled = locked;
         }
         $<HTMLButtonElement>('#reset-project').disabled = locked || active().simulation.mode !== 'off';
+        $<HTMLSelectElement>('#project-preset').disabled = locked || active().simulation.mode !== 'off';
         $<HTMLInputElement>('#project-name').disabled = locked;
         $<HTMLSelectElement>('#component-select').disabled = session.busy;
         $<HTMLButtonElement>('#flap-btn').disabled = locked || !active().flap;
@@ -250,6 +252,13 @@ export function startProjectApp() {
     else
         delete active().project.name; $('#project-meta').toggleAttribute('data-i18n-ignore', !!name); $('#project-meta').textContent = name || '配線專案'; };
     $<HTMLSelectElement>('#component-select').onchange = () => select($<HTMLSelectElement>('#component-select').value);
+    $<HTMLSelectElement>('#project-preset').onchange = async () => {
+        const select=$<HTMLSelectElement>('#project-preset'), preset=projectPreset(select.value);
+        if(!preset)return;
+        try { await loadProject(JSON.stringify(preset.project()), p => { filesUI.status.textContent = `切換盤面 · ${p.detail}`; }); filesUI.status.textContent = `已切換：${preset.label}；模擬未執行。`; }
+        catch(error){ toast(error instanceof Error?error.message:String(error)); }
+        finally { filesUI.render(); }
+    };
     $<HTMLButtonElement>('#reset-project').onclick = async () => { try {
         await loadProject(JSON.stringify(defaultProject()), p => { filesUI.status.textContent = `載入預設盤面 · ${p.detail}`; });
         filesUI.status.textContent = '已載入預設盤面，電源已預接至 QF1；尚無練習接線，模擬未執行。';
