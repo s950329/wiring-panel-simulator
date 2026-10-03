@@ -20,3 +20,12 @@ test('question 07 empty panel is a valid portable project',()=>{
   assert.equal(p.configuration.components.filter(c=>['WL','YL','RL','GL'].includes(c.id)).length,4);
   assert.equal(p.connections.length,0);
 });
+
+test('question 07 is registered as a selectable project preset',async()=>{
+  const {projectPresets,projectPreset}=await import('../src/project/presets.ts');
+  assert.ok(projectPresets.some(p=>p.id==='question-07'));
+  const preset=projectPreset('question-07');
+  assert.ok(preset);
+  assert.equal(preset!.project().name,'工業配線丙級｜第七題｜正逆轉控制（空盤）');
+  assert.notEqual(preset!.project(),preset!.project());
+});
