@@ -1,0 +1,17 @@
+import {test} from 'node:test';
+import {strict as assert} from 'node:assert';
+import {buildQ5Model,flattenNodes} from '../src/q5/model.js';
+const model=buildQ5Model();
+test('B5 pump exercise is identified; electrical simulation is disabled',()=>{assert.equal(model.examId,'01300-104305B');assert.equal(model.electricalSimulationEnabled,false);});
+test('all 22 reference photos are retained without embedding original photos',()=>{assert.equal(model.photos.length,22);assert.equal(new Set(model.photos).size,22);assert.ok(model.photos.every(p=>p.endsWith('.jpeg')));});
+test('plate sizes are nominal, not measured',()=>{assert.deepEqual(model.nominalPlateMm,[480,350,2]);assert.deepEqual(model.nominalOperationPlateMm,[270,350,2]);assert.equal(model.measuredFromPhysicalPanel,false);});
+test('one FS assembly, two contactors, and two thermal relays',()=>{assert.equal(model.components.filter(c=>c.kind==='level').length,1);assert.equal(model.components.filter(c=>c.kind==='contactor').length,2);assert.equal(model.components.filter(c=>c.kind==='overload').length,2);});
+test('FS includes all nine visible terminals, including unused S1',()=>{assert.deepEqual(model.components.find(c=>c.id==='FS')?.terminals.map(t=>t.printedId),['Ta','Tc','Tb','E2','E1','S0','S1','S2','E3']);});
+test('official and additional terminal strips remain distinct',()=>{for(const [id,n] of [['TB1',4],['TB2',4],['TB3',12],['TB-FS',9],['TB-E',3]] as const)assert.equal(model.components.find(c=>c.id===id)?.terminals.length,n*2);});
+test('red-lamp conflict stays unresolved; physical right label remains RL1',()=>{assert.equal(model.components.find(c=>c.id==='RED-LEFT')?.logicalRole,null);assert.equal(model.components.find(c=>c.id==='RED-RIGHT')?.logicalRole,null);assert.equal(model.components.find(c=>c.id==='RED-RIGHT')?.photoLabel,'RL1');});
+test('unknown MR socket positions and electrode identities are not promoted',()=>{assert.ok(model.components.find(c=>c.id==='MR')?.terminals.every(t=>!t.positionVerified&&!t.identityVerified));assert.ok(model.components.find(c=>c.id==='ELECTRODES')?.terminals.every(t=>!t.identityVerified));});
+test('all model terminals remain unavailable for actual wiring',()=>{assert.ok(model.components.flatMap(c=>c.terminals).every(t=>t.wiringEnabled===false));});
+test('no invented duct or working route is supplied',()=>{assert.equal(model.routingMode,'unconfigured-no-duct');assert.ok(![...flattenNodes(model.nodes)].some(n=>n.id.includes('duct')));});
+test('component and geometry identities are unique',()=>{assert.equal(new Set(model.components.map(c=>c.id)).size,22);const nodes=[...flattenNodes(model.nodes)];assert.equal(new Set(nodes.map(n=>n.id)).size,nodes.length);});
+test('geometry primitives have finite nondegenerate dimensions',()=>{const nodes=[...flattenNodes(model.nodes)];assert.ok(nodes.length>250);for(const n of nodes){assert.ok([...n.position,...n.rotation,n.opacity].every(Number.isFinite));if(n.shape?.type==='box')assert.ok(n.shape.size.every(v=>v>0));if(n.shape?.type==='cylinder')assert.ok(n.shape.radius>0&&n.shape.height>0);}});
+test('model builds are independent',()=>{const another=buildQ5Model();assert.notEqual(another.nodes[0],model.nodes[0]);another.components[0].name='changed';assert.notEqual(another.components[0].name,model.components[0].name);});
