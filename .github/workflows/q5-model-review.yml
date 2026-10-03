@@ -1,0 +1,26 @@
+name: Verify Q5 visual model
+on:
+  push:
+    branches: ['feature/q5-photo-model-v1']
+  pull_request:
+    paths: ['src/q5/**', 'qa/q5-model-check.ts', 'q5.html', 'vite.config.ts', '.github/workflows/q5-model-review.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: node --import tsx --test qa/q5-model-check.ts
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: q5-visual-model-build
+          path: dist/
+          retention-days: 14
