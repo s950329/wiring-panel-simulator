@@ -37,6 +37,7 @@ The simulator currently focuses on basic motor-control training. Two ready-to-im
 
 - [`examples/a04-motor-start.project.json`](examples/a04-motor-start.project.json) — a complete direct-on-line motor starter.
 - [`examples/board-024-classroom.project.json`](examples/board-024-classroom.project.json) — the classroom control-circuit exercise.
+- [`examples/question-07-empty.project.json`](examples/question-07-empty.project.json) — the Industrial Wiring Level C question 7 reversing-control panel, ready for student wiring.
 
 The A04 example demonstrates the following sequence:
 
