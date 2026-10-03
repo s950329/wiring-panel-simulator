@@ -2,7 +2,7 @@ import type { Group, Object3D, Mesh, MeshPhysicalMaterial } from 'three';
 
 /** Board-proportion units, not measured millimetres. All vectors are component-local. */
 export type Vec3 = readonly [number, number, number];
-export type ViewType = 'breaker' | 'fuse' | 'contactorSP' | 'contactorSC' | 'contactorCN' |
+export type ViewType = 'breaker' | 'motorBreaker' | 'miniBreaker2P' | 'fuse' | 'contactorSP' | 'contactorSC' | 'contactorCN' | 'contactorTesys' | 'mechanicalInterlock' |
   'auxiliary' | 'overload' | 'socket' | 'terminalStrip' | 'buzzer' | 'emergency' | 'selector' | 'button' | 'lamp';
 export type BehaviorKind = 'button' | 'contactor' | 'breaker' | 'fuse' | 'auxiliary' | 'overload' |
   'socket' | 'terminalStrip' | 'buzzer' | 'emergency' | 'selector' | 'lamp';
