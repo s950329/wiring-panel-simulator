@@ -1,7 +1,7 @@
 import type {ProjectDocument} from './contracts.ts';
 import {defaultProject} from './default-project.ts';
 
-const question07: ProjectDocument = {
+export const question07Project: ProjectDocument = {
   "format": "wiring-panel-project",
   "schemaVersion": 1,
   "name": "工業配線丙級｜第七題｜正逆轉控制（空盤）",
@@ -351,6 +351,6 @@ const question07: ProjectDocument = {
 export interface ProjectPreset {id:string;label:string;project:()=>ProjectDocument}
 export const projectPresets:readonly ProjectPreset[] = Object.freeze([
   {id:'board-024',label:'原始練習盤｜BOARD 024',project:defaultProject},
-  {id:'question-07',label:'第七題｜三相感應電動機正反轉控制',project:()=>structuredClone(question07)},
+  {id:'question-07',label:'第七題｜三相感應電動機正反轉控制',project:()=>structuredClone(question07Project)},
 ]);
 export function projectPreset(id:string):ProjectPreset|undefined{return projectPresets.find(p=>p.id===id);}
