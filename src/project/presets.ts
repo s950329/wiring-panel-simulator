@@ -294,7 +294,7 @@ const question07: ProjectDocument = {
           "position": [
             -110,
             0,
-            28
+            -60
           ],
           "rotationY": 0
         }
@@ -308,7 +308,7 @@ const question07: ProjectDocument = {
           "position": [
             -35,
             0,
-            28
+            -60
           ],
           "rotationY": 0
         }
@@ -322,7 +322,7 @@ const question07: ProjectDocument = {
           "position": [
             40,
             0,
-            28
+            -60
           ],
           "rotationY": 0
         }
@@ -336,7 +336,7 @@ const question07: ProjectDocument = {
           "position": [
             115,
             0,
-            28
+            -60
           ],
           "rotationY": 0
         }
