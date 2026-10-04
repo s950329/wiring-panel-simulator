@@ -29,6 +29,16 @@ const definitions: Record<string, Definition> = {
   [AC220_SOURCE_DEFINITION]: {terminals: ['L1', 'L2', 'L3'], model: model()},
   'teaching-motor': {terminals: ['U', 'V', 'W'], model: model({
     motors: [{id: 'motor', terminals: ['U', 'V', 'W'], profile: THREE_PHASE_PROFILE}]})},
+  'schneider-gv2me08': {terminals: ['L1','L2','L3','T1','T2','T3'], model: model({inputs:{on:booleanInput(false)},
+    contacts:[1,2,3].map(i=>inputContact(`pole-${i}`,`L${i}`,`T${i}`,'on',true))})},
+  'schneider-ic60n-2p-c3': {terminals: ['L1','L2','T1','T2'], model: model({inputs:{on:booleanInput(false)},
+    contacts:[1,2].map(i=>inputContact(`pole-${i}`,`L${i}`,`T${i}`,'on',true))})},
+  'schneider-tesys-d': {terminals:['1L1','3L2','5L3','2T1','4T2','6T3','A1','A2','13','14','21','22'],
+    model:model({loads:[load('coil','A1','A2','coil')],contacts:[
+      coilContact('main-1','1L1','2T1'),coilContact('main-2','3L2','4T2'),coilContact('main-3','5L3','6T3'),
+      coilContact('aux-NO','13','14'),coilContact('aux-NC','21','22',false)]})},
+  'reversing-mechanical-interlock': {terminals:[], model:model()},
+  'terminal-strip-4': strip(4),
   'shihlin-sp16': {terminals: ['1L1', '3L2', '5L3', '2T1', '4T2', '6T3', ...sides, 'A1', 'A2'],
     // This photographed classroom asset includes an APS-11 on each side; each is 1NO + 1NC.
     model: model({loads: [load('coil', 'A1', 'A2', 'coil')],
