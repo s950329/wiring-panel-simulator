@@ -13,6 +13,11 @@ test('question 07 empty panel is a valid portable project',()=>{
   assert.equal(p.configuration.components.filter(c=>['PB1','PB2','PB3','PB4'].includes(c.id)).length,4);
   assert.equal(p.configuration.components.filter(c=>['WL','YL','RL','GL'].includes(c.id)).length,4);
   assert.equal(p.connections.length,0);
+  for(const id of ['PB1','PB2','PB3','PB4','WL','YL','RL','GL']){
+    const component=p.configuration.components.find(c=>c.id===id);
+    assert.ok(component?.placement && 'mountId' in component.placement);
+    assert.equal(component.placement.mountId,'operation-panel-q7');
+  }
 });
 
 test('question 07 is registered as a selectable project preset',async()=>{
